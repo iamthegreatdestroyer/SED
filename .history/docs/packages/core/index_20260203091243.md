@@ -1,0 +1,145 @@
+# @sed/core
+
+The core entropy analysis engine for SED.
+
+## Overview
+
+`@sed/core` provides the fundamental algorithms for:
+
+- Source code parsing
+- AST diffing
+- Entropy calculation
+- Change classification
+
+## Installation
+
+```bash
+npm install @sed/core
+```
+
+## Quick Start
+
+```typescript
+import { analyzeFile, calculateEntropy, classifyEntropy } from '@sed/core';
+
+// Analyze a file diff
+const result = await analyzeFile('before-content', 'after-content', { language: 'typescript' });
+
+console.log(result.entropy);
+console.log(result.classification);
+```
+
+## Core Functions
+
+### analyzeFile
+
+Analyze changes between two versions of a file.
+
+```typescript
+import { analyzeFile } from '@sed/core';
+
+const result = await analyzeFile(
+  oldContent,
+  newContent,
+  {
+    language: 'typescript',
+    filePath: 'src/index.ts',
+    options: {
+      nodeWeights: { ... },
+      contextFactor: 1.0,
+    },
+  }
+);
+```
+
+### calculateEntropy
+
+Calculate raw entropy from AST changes.
+
+```typescript
+import { calculateEntropy } from '@sed/core';
+
+const entropy = calculateEntropy(astChanges, {
+  weights: customWeights,
+});
+```
+
+### classifyEntropy
+
+Classify entropy value into a category.
+
+```typescript
+import { classifyEntropy } from '@sed/core';
+
+const classification = classifyEntropy(3.5, {
+  trivial: 0.5,
+  low: 1.5,
+  medium: 3.0,
+  high: 4.5,
+});
+
+console.log(classification); // 'high'
+```
+
+## Classes
+
+### Analyzer
+
+Main analysis engine.
+
+```typescript
+import { Analyzer } from '@sed/core';
+
+const analyzer = new Analyzer({
+  thresholds: { ... },
+  nodeWeights: { ... },
+});
+
+const result = await analyzer.analyze(oldCode, newCode);
+```
+
+### Parser
+
+Language-aware parser.
+
+```typescript
+import { Parser } from '@sed/core';
+
+const parser = new Parser('typescript');
+const ast = await parser.parse(sourceCode);
+```
+
+## Supported Languages
+
+| Language   | Parser      | Extension          |
+| ---------- | ----------- | ------------------ |
+| TypeScript | tree-sitter | `.ts`, `.tsx`      |
+| JavaScript | tree-sitter | `.js`, `.jsx`      |
+| Python     | tree-sitter | `.py`              |
+| Rust       | tree-sitter | `.rs`              |
+| Go         | tree-sitter | `.go`              |
+| Java       | tree-sitter | `.java`            |
+| C/C++      | tree-sitter | `.c`, `.cpp`, `.h` |
+
+## Architecture
+
+```
+@sed/core
+├── analyzer/       # Main analysis logic
+│   ├── index.ts
+│   └── entropy.ts
+├── parser/         # Language parsers
+│   ├── index.ts
+│   └── languages/
+├── differ/         # AST diffing
+│   ├── index.ts
+│   └── algorithms/
+└── classifier/     # Entropy classification
+    └── index.ts
+```
+
+## See Also
+
+- [API Reference](/api/core)
+- [Core Concepts](/guide/concepts)
+- [@sed/git](/packages/git/)

@@ -1,0 +1,314 @@
+{
+  "name": "sed-vscode",
+  "displayName": "SED - Semantic Entropy Differencing",
+  "description": "Semantic entropy analysis for code changes in VS Code",
+  "version": "0.1.0",
+  "publisher": "sgbilod",
+  "license": "MIT",
+  "author": {
+    "name": "Stevo (sgbilod)"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sgbilod/sed.git",
+    "directory": "apps/vscode"
+  },
+  "homepage": "https://github.com/sgbilod/sed#readme",
+  "bugs": {
+    "url": "https://github.com/sgbilod/sed/issues"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "SCM Providers",
+    "Visualization"
+  ],
+  "keywords": [
+    "entropy",
+    "semantic",
+    "diff",
+    "git",
+    "code review",
+    "analysis"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:sed.analyzeChanges",
+    "onCommand:sed.analyzeFile",
+    "workspaceContains:.git"
+  ],
+  "main": "./dist/extension.js",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "sed.analyzeChanges",
+        "title": "Analyze Changes",
+        "category": "SED"
+      },
+      {
+        "command": "sed.analyzeFile",
+        "title": "Analyze Current File",
+        "category": "SED"
+      },
+      {
+        "command": "sed.compareRefs",
+        "title": "Compare Git References",
+        "category": "SED"
+      },
+      {
+        "command": "sed.generateReport",
+        "title": "Generate Report",
+        "category": "SED"
+      },
+      {
+        "command": "sed.showPanel",
+        "title": "Show SED Panel",
+        "category": "SED"
+      },
+      {
+        "command": "sed.refreshAnalysis",
+        "title": "Refresh Analysis",
+        "category": "SED",
+        "icon": "$(refresh)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sed-explorer",
+          "title": "SED - Semantic Entropy",
+          "icon": "media/icon-activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "sed-explorer": [
+        {
+          "id": "sed.changesView",
+          "name": "Changes",
+          "contextualTitle": "SED Changes"
+        },
+        {
+          "id": "sed.summaryView",
+          "name": "Summary",
+          "contextualTitle": "SED Summary"
+        },
+        {
+          "id": "sed.historyView",
+          "name": "History",
+          "contextualTitle": "SED History"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "sed.changesView",
+        "contents": "No changes analyzed yet.\n[Analyze Changes](command:sed.analyzeChanges)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "sed.analyzeChanges",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "sed.analyzeFile",
+          "when": "editorIsOpen"
+        },
+        {
+          "command": "sed.compareRefs",
+          "when": "workspaceFolderCount > 0"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "sed.refreshAnalysis",
+          "when": "view == sed.changesView",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "sed.analyzeFile",
+          "when": "editorIsOpen && resourceScheme == file",
+          "group": "navigation"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "sed.analyzeChanges",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "sed.analyzeFile",
+          "when": "resourceScheme == file",
+          "group": "sed@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "SED - Semantic Entropy Differencing",
+      "properties": {
+        "sed.autoAnalyze": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically analyze changes when files are saved"
+        },
+        "sed.showInlineDecorations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show entropy indicators inline in the editor"
+        },
+        "sed.showGutterIcons": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show classification icons in the editor gutter"
+        },
+        "sed.threshold.trivial": {
+          "type": "number",
+          "default": 0.5,
+          "description": "Maximum entropy for trivial classification"
+        },
+        "sed.threshold.low": {
+          "type": "number",
+          "default": 1.5,
+          "description": "Maximum entropy for low classification"
+        },
+        "sed.threshold.medium": {
+          "type": "number",
+          "default": 3,
+          "description": "Maximum entropy for medium classification"
+        },
+        "sed.threshold.high": {
+          "type": "number",
+          "default": 5,
+          "description": "Maximum entropy for high classification"
+        },
+        "sed.threshold.critical": {
+          "type": "number",
+          "default": 6,
+          "description": "Minimum entropy for critical classification"
+        },
+        "sed.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/.git/**",
+            "**/dist/**",
+            "**/build/**"
+          ],
+          "description": "Glob patterns to exclude from analysis"
+        },
+        "sed.languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "typescript",
+            "javascript",
+            "python",
+            "java",
+            "go",
+            "rust"
+          ],
+          "description": "Languages to analyze"
+        },
+        "sed.defaultRef": {
+          "type": "string",
+          "default": "HEAD~1",
+          "description": "Default git reference to compare against"
+        },
+        "sed.reportFormat": {
+          "type": "string",
+          "enum": [
+            "html",
+            "markdown",
+            "json"
+          ],
+          "default": "html",
+          "description": "Default format for generated reports"
+        }
+      }
+    },
+    "colors": [
+      {
+        "id": "sed.trivialBackground",
+        "description": "Background color for trivial entropy changes",
+        "defaults": {
+          "dark": "#1a472a20",
+          "light": "#d4edda40"
+        }
+      },
+      {
+        "id": "sed.lowBackground",
+        "description": "Background color for low entropy changes",
+        "defaults": {
+          "dark": "#0d6efd20",
+          "light": "#cce5ff40"
+        }
+      },
+      {
+        "id": "sed.mediumBackground",
+        "description": "Background color for medium entropy changes",
+        "defaults": {
+          "dark": "#ffc10720",
+          "light": "#fff3cd40"
+        }
+      },
+      {
+        "id": "sed.highBackground",
+        "description": "Background color for high entropy changes",
+        "defaults": {
+          "dark": "#fd7e1420",
+          "light": "#f8d7da40"
+        }
+      },
+      {
+        "id": "sed.criticalBackground",
+        "description": "Background color for critical entropy changes",
+        "defaults": {
+          "dark": "#dc354520",
+          "light": "#f5c2c740"
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run build",
+    "build": "tsup",
+    "watch": "tsup --watch",
+    "lint": "eslint src --ext ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "package": "vsce package --no-dependencies",
+    "publish": "vsce publish --no-dependencies"
+  },
+  "dependencies": {
+    "@sed/core": "workspace:*",
+    "@sed/git": "workspace:*",
+    "@sed/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.3.8",
+    "@vscode/vsce": "^2.22.0",
+    "eslint": "^8.56.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0"
+  }
+}

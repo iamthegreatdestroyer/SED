@@ -1,0 +1,37 @@
+# SED Contributors
+
+Thank you to everyone who has contributed to SED! 🎉
+
+## Core Team
+
+- **Stevo (sgbilod)** - Project Lead, Core Architecture
+
+## Contributors
+
+<!-- Contributors will be added here as the project grows -->
+
+---
+
+Want to see your name here? Check out our [Contributing Guide](CONTRIBUTING.md)!
+
+## How to Contribute
+
+We welcome contributions of all kinds:
+
+- 🐛 Bug reports and fixes
+- ✨ New features
+- 📖 Documentation improvements
+- 🧪 Test additions
+- 💡 Ideas and suggestions
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to get started.
+
+## Recognition
+
+All contributors are recognized:
+
+- In this file
+- In release notes for their contributions
+- On the documentation site
+
+Thank you for making SED better!

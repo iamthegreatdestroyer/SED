@@ -1,0 +1,69 @@
+name: "SED - Semantic Entropy Differencing"
+description: "Analyze code changes using entropy-based semantic differencing"
+author: "Stevo (sgbilod)"
+
+branding:
+  icon: "git-commit"
+  color: "blue"
+
+inputs:
+  base:
+    description: "Base commit or branch to compare from"
+    required: false
+    default: ""
+  head:
+    description: "Head commit or branch to compare to"
+    required: false
+    default: ""
+  path:
+    description: "Path to analyze (relative to repository root)"
+    required: false
+    default: "."
+  include:
+    description: "Glob patterns to include (comma-separated)"
+    required: false
+    default: ""
+  exclude:
+    description: "Glob patterns to exclude (comma-separated)"
+    required: false
+    default: "node_modules/**,dist/**,.git/**"
+  fail-on:
+    description: "Fail the action if entropy exceeds threshold (critical, high, medium, low, or never)"
+    required: false
+    default: "never"
+  threshold:
+    description: "Custom entropy threshold for failure"
+    required: false
+    default: ""
+  comment:
+    description: "Post analysis as PR comment (true/false)"
+    required: false
+    default: "true"
+  json-output:
+    description: "Output JSON file path"
+    required: false
+    default: ""
+  markdown-output:
+    description: "Output Markdown file path"
+    required: false
+    default: ""
+  summary:
+    description: "Write summary to GitHub Actions summary (true/false)"
+    required: false
+    default: "true"
+
+outputs:
+  total-entropy:
+    description: "Total entropy of all analyzed files"
+  average-entropy:
+    description: "Average entropy per file"
+  files-analyzed:
+    description: "Number of files analyzed"
+  classification:
+    description: "Overall classification (trivial, low, medium, high, critical)"
+  json:
+    description: "Full analysis result as JSON string"
+
+runs:
+  using: "node20"
+  main: "dist/index.js"

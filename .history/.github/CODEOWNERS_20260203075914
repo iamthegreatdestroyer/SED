@@ -1,0 +1,22 @@
+# CODEOWNERS - SED Project
+# These owners will be requested for review when someone opens a pull request.
+
+# Default owner for everything
+* @iamthegreatdestroyer
+
+# Core engine - requires careful review
+packages/core/ @iamthegreatdestroyer
+
+# Entropy calculations - mathematical accuracy critical
+packages/core/src/entropy/ @iamthegreatdestroyer
+
+# Security-related files
+SECURITY.md @iamthegreatdestroyer
+.github/workflows/security.yml @iamthegreatdestroyer
+
+# CI/CD configuration
+.github/ @iamthegreatdestroyer
+
+# Documentation
+docs/ @iamthegreatdestroyer
+*.md @iamthegreatdestroyer

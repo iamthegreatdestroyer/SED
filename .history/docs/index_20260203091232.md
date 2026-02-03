@@ -1,0 +1,140 @@
+---
+layout: home
+
+hero:
+  name: SED
+  text: Semantic Entropy Differencing
+  tagline: Understand code changes through information theory
+  image:
+    src: /logo.svg
+    alt: SED Logo
+  actions:
+    - theme: brand
+      text: Get Started
+      link: /guide/getting-started
+    - theme: alt
+      text: View on GitHub
+      link: https://github.com/sgbilod/sed
+
+features:
+  - icon: 🔍
+    title: Semantic Analysis
+    details:
+      Analyze code changes at the AST level, understanding the true semantic impact of
+      modifications.
+  - icon: 📊
+    title: Entropy Metrics
+    details:
+      Quantify code complexity using information theory, providing objective measurements of change
+      impact.
+  - icon: 🎯
+    title: Smart Classification
+    details: Automatically categorize changes from trivial to critical based on entropy thresholds.
+  - icon: 🛠️
+    title: Multi-Platform
+    details:
+      Use via CLI, VS Code extension, GitHub Action, or web dashboard - whatever fits your workflow.
+  - icon: 📈
+    title: Visualization
+    details:
+      Beautiful charts and graphs help you understand the distribution of changes across your
+      codebase.
+  - icon: ⚡
+    title: Fast & Accurate
+    details: Built with performance in mind, using efficient parsing and caching strategies.
+---
+
+## Quick Start
+
+### Installation
+
+```bash
+# Using npm
+npm install -g @sed/cli
+
+# Using pnpm
+pnpm add -g @sed/cli
+
+# Using Homebrew
+brew install sed
+```
+
+### Basic Usage
+
+```bash
+# Analyze changes between commits
+sed analyze HEAD~1 HEAD
+
+# Compare branches
+sed compare main feature-branch
+
+# Watch for changes
+sed watch ./src
+```
+
+### Sample Output
+
+```
+📊 SED Analysis Results
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Files Analyzed: 12
+Total Entropy:  45.23
+Avg Entropy:    3.77
+Classification: MEDIUM
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Classification Distribution:
+  ✅ trivial:  3
+  💚 low:      4
+  💛 medium:   3
+  🟠 high:     2
+  🔴 critical: 0
+```
+
+## Why SED?
+
+Traditional diff tools show you what changed, but not the impact of those changes. SED uses
+**information theory** to measure the semantic complexity of code modifications:
+
+- **Function added** → Higher entropy (new information)
+- **Whitespace changed** → Lower entropy (formatting only)
+- **Algorithm rewritten** → Highest entropy (significant change)
+
+This helps teams:
+
+- 🎯 **Prioritize code reviews** by focusing on high-entropy changes
+- 📈 **Track complexity trends** over time
+- 🚨 **Set quality gates** in CI/CD pipelines
+- 📚 **Document architectural decisions** with objective metrics
+
+## Integrations
+
+<div class="integrations">
+
+### VS Code Extension
+
+Analyze changes directly in your editor with syntax highlighting and inline annotations.
+
+### GitHub Action
+
+Automatically analyze PRs and post results as comments. Set up quality gates that fail builds when
+entropy exceeds thresholds.
+
+### Web Dashboard
+
+Visualize entropy distributions, compare branches, and explore historical trends through an
+interactive interface.
+
+</div>
+
+## Community
+
+- [GitHub Discussions](https://github.com/sgbilod/sed/discussions)
+- [Discord Server](https://discord.gg/sed)
+- [Twitter @sed_dev](https://twitter.com/sed_dev)
+
+## License
+
+MIT © Stevo (sgbilod)

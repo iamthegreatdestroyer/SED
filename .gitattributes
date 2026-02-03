@@ -1,0 +1,38 @@
+# SED - Semantic Entropy Differencing
+# Git diff driver configuration
+
+# Auto-detect text files
+* text=auto eol=lf
+
+# Source files - use SED for semantic diff
+*.ts diff=sed-typescript
+*.tsx diff=sed-typescript
+*.js diff=sed-javascript
+*.jsx diff=sed-javascript
+*.py diff=sed-python
+*.rs diff=sed-rust
+*.go diff=sed-go
+*.java diff=sed-java
+
+# Binary files
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.onnx binary
+*.bin binary
+
+# Lock files - generated, no diff
+pnpm-lock.yaml -diff
+
+# Documentation
+*.md diff=markdown
+*.mdx diff=markdown
+
+# JSON - standard diff
+*.json diff
+
+# Configuration
+*.yml diff
+*.yaml diff
+*.toml diff

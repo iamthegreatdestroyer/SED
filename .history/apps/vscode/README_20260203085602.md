@@ -1,0 +1,134 @@
+# SED VS Code Extension
+
+> Semantic Entropy Differencing for Visual Studio Code
+
+## Features
+
+- **Real-time Analysis**: Automatically analyze code changes as you work
+- **Visual Indicators**: See entropy classifications with gutter icons and inline decorations
+- **Git Integration**: Analyze changes between any git references
+- **Comprehensive Reports**: Generate HTML, Markdown, or JSON reports
+- **Explorer Panel**: Dedicated sidebar with change summaries and history
+
+## Installation
+
+### From VS Code Marketplace
+
+1. Open VS Code
+2. Go to Extensions (Ctrl+Shift+X)
+3. Search for "SED - Semantic Entropy Differencing"
+4. Click Install
+
+### From VSIX
+
+```bash
+code --install-extension sed-vscode-0.1.0.vsix
+```
+
+## Commands
+
+| Command                       | Description                                    |
+| ----------------------------- | ---------------------------------------------- |
+| `SED: Analyze Changes`        | Analyze current uncommitted changes            |
+| `SED: Analyze Current File`   | Analyze entropy of the active file             |
+| `SED: Compare Git References` | Compare two git refs (branches, tags, commits) |
+| `SED: Generate Report`        | Create a detailed analysis report              |
+| `SED: Show SED Panel`         | Open the SED sidebar panel                     |
+| `SED: Refresh Analysis`       | Refresh the current analysis                   |
+
+## Configuration
+
+| Setting                     | Default  | Description                      |
+| --------------------------- | -------- | -------------------------------- |
+| `sed.autoAnalyze`           | `true`   | Auto-analyze on file save        |
+| `sed.showInlineDecorations` | `true`   | Show inline entropy indicators   |
+| `sed.showGutterIcons`       | `true`   | Show gutter classification icons |
+| `sed.threshold.trivial`     | `0.5`    | Maximum entropy for trivial      |
+| `sed.threshold.low`         | `1.5`    | Maximum entropy for low          |
+| `sed.threshold.medium`      | `3.0`    | Maximum entropy for medium       |
+| `sed.threshold.high`        | `5.0`    | Maximum entropy for high         |
+| `sed.threshold.critical`    | `6.0`    | Minimum for critical             |
+| `sed.exclude`               | `[...]`  | Glob patterns to exclude         |
+| `sed.languages`             | `[...]`  | Languages to analyze             |
+| `sed.defaultRef`            | `HEAD~1` | Default comparison reference     |
+| `sed.reportFormat`          | `html`   | Default report format            |
+
+## Classification Colors
+
+| Classification | Entropy Range | Color  |
+| -------------- | ------------- | ------ |
+| Trivial        | 0 - 0.5       | Green  |
+| Low            | 0.5 - 1.5     | Blue   |
+| Medium         | 1.5 - 3.0     | Yellow |
+| High           | 3.0 - 5.0     | Orange |
+| Critical       | 5.0+          | Red    |
+
+## Views
+
+### Changes View
+
+Shows all files with analyzed changes, sorted by entropy impact.
+
+### Summary View
+
+Displays aggregate statistics including:
+
+- Total files analyzed
+- Classification distribution
+- Average entropy
+- Highest impact changes
+
+### History View
+
+Tracks analysis history for quick reference and comparison.
+
+## Usage
+
+### Analyze Uncommitted Changes
+
+1. Open a Git repository in VS Code
+2. Run command `SED: Analyze Changes`
+3. View results in the SED sidebar
+
+### Compare Branches
+
+1. Run command `SED: Compare Git References`
+2. Enter the base reference (e.g., `main`)
+3. Enter the target reference (e.g., `feature/new-feature`)
+4. View comparison results
+
+### Generate a Report
+
+1. Run command `SED: Generate Report`
+2. Choose output format (HTML, Markdown, JSON)
+3. Select output location
+4. Report opens automatically
+
+## Requirements
+
+- VS Code 1.85.0 or higher
+- Git repository (for change analysis)
+- Node.js 18+ (for local development)
+
+## Development
+
+```bash
+# Install dependencies
+pnpm install
+
+# Build extension
+pnpm run build
+
+# Watch mode
+pnpm run watch
+
+# Run tests
+pnpm test
+
+# Package extension
+pnpm run package
+```
+
+## License
+
+MIT © Stevo (sgbilod)

@@ -1,0 +1,34 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
+adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- Initial project scaffolding
+- Core SED engine with semantic Merkle tree implementation
+- Shannon entropy and KL divergence calculations
+- Tree-sitter based multi-language parsing
+- CLI application with diff, analyze, blame, review commands
+- VS Code extension with entropy visualization
+- GitHub Action for CI integration
+- Web API and dashboard
+
+### Infrastructure
+
+- Turborepo monorepo setup
+- pnpm workspace configuration
+- CI/CD with GitHub Actions
+- Comprehensive TypeScript configuration
+
+## [0.0.1] - 2026-02-03
+
+### Added
+
+- Project initialization
+- Repository structure creation
+- Documentation framework

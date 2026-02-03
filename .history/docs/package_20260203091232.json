@@ -1,0 +1,19 @@
+{
+  "name": "@sed/docs",
+  "version": "0.1.0",
+  "description": "SED Documentation - Semantic Entropy Differencing",
+  "author": "Stevo (sgbilod)",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview",
+    "lint": "markdownlint '**/*.md' --ignore node_modules"
+  },
+  "devDependencies": {
+    "markdownlint-cli": "^0.38.0",
+    "vitepress": "^1.0.0-rc.31"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@sed/config",
+  "version": "0.0.0",
+  "description": "Shared configuration for SED packages",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    "./eslint": "./eslint.config.js",
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./tsconfig.node.json": "./tsconfig.node.json",
+    "./vitest": "./vitest.config.js"
+  },
+  "files": [
+    "*.js",
+    "*.json"
+  ],
+  "scripts": {},
+  "devDependencies": {},
+  "license": "MIT"
+}
