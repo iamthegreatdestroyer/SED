@@ -61,7 +61,7 @@ jobs:
 
             - name: Upload VS Code Extension
               if: steps.changesets.outputs.published == 'true'
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               with:
                   name: vscode-extension
                   path: apps/vscode/*.vsix
