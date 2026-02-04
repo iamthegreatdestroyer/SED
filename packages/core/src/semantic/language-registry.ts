@@ -12,6 +12,7 @@ import type { SupportedLanguage } from '@sed/shared/types';
  */
 interface LanguageConfig {
   readonly moduleName: string;
+  readonly exportName?: string; // Named export for languages like TypeScript
   readonly semanticNodeTypes: readonly string[];
   readonly scopeNodeTypes: readonly string[];
   readonly ignoreNodeTypes: readonly string[];
@@ -23,6 +24,7 @@ interface LanguageConfig {
 export const LANGUAGE_CONFIGS: Record<SupportedLanguage, LanguageConfig> = {
   typescript: {
     moduleName: 'tree-sitter-typescript',
+    exportName: 'typescript',
     semanticNodeTypes: [
       'function_declaration',
       'method_definition',
@@ -216,8 +218,20 @@ export class LanguageRegistry {
     try {
       // Dynamic import of Tree-sitter language module
       const languageModule = await import(config.moduleName);
-      this.loadedParsers.set(language, languageModule.default || languageModule);
-      return this.loadedParsers.get(language);
+
+      // Handle named exports (like TypeScript) vs default exports
+      const parser = config.exportName
+        ? languageModule[config.exportName]
+        : languageModule.default || languageModule;
+
+      if (!parser) {
+        throw new Error(
+          `Invalid language object: module does not export '${config.exportName || 'default'}'`
+        );
+      }
+
+      this.loadedParsers.set(language, parser);
+      return parser;
     } catch (error) {
       throw new Error(
         `Failed to load parser for ${language}: ${error instanceof Error ? error.message : 'Unknown error'}`

@@ -270,14 +270,19 @@ export class EntropyCalculator {
     const propagationFactor = this.computePropagationFactor(node, changeType);
 
     // Combined score using the Change Entropy formula
+    // Calculate using absolute propagation factor for always-positive entropy
     const combinedScore = calculateChangeEntropy(
       structuralEntropy,
       semanticEntropy,
-      propagationFactor
+      Math.abs(propagationFactor)
     );
 
-    // Normalize to 0-1 range
-    const normalizedScore = normalizeEntropy(combinedScore);
+    // Normalize to 0-1 range using a reasonable maximum
+    // Use depth and children count to estimate complexity
+    // Higher minimum for more conservative normalization (prevents over-classification)
+    const complexityFactor = Math.max(1, node.depth + node.children.length / 2);
+    const maxCategories = Math.max(16, Math.ceil(complexityFactor * 6));
+    const normalizedScore = normalizeEntropy(combinedScore, maxCategories);
 
     // Classify level
     const level = classifyEntropyLevel(normalizedScore, this.options.thresholds);
@@ -389,7 +394,10 @@ export class EntropyCalculator {
     const childrenFactor = 1 + node.children.length * 0.2;
     const typeFactor = this.getTypePropagationFactor(node.type);
 
-    return depthFactor * childrenFactor * typeFactor;
+    const factor = depthFactor * childrenFactor * typeFactor;
+
+    // Removed nodes have negative propagation (reduced impact)
+    return changeType === 'removed' ? -factor : factor;
   }
 
   /**

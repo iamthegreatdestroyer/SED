@@ -97,10 +97,17 @@ export function validateConfig(config: unknown): config is SEDConfig {
   const c = config as Record<string, unknown>;
 
   // Check version
-  if (c.version !== '1.0') return false;
+  if (c['version'] !== '1.0') return false;
 
   // Check required sections exist
-  if (!c.output || !c.entropy || !c.diff || !c.languages || !c.git || !c.performance) {
+  if (
+    !c['output'] ||
+    !c['entropy'] ||
+    !c['diff'] ||
+    !c['languages'] ||
+    !c['git'] ||
+    !c['performance']
+  ) {
     return false;
   }
 
@@ -128,20 +135,20 @@ export function validateConfigDetailed(config: unknown): ConfigValidationError[]
 
   const c = config as Record<string, unknown>;
 
-  if (c.version !== '1.0') {
+  if (c['version'] !== '1.0') {
     errors.push({ path: 'version', message: 'Version must be "1.0"' });
   }
 
-  if (!c.output) {
+  if (!c['output']) {
     errors.push({ path: 'output', message: 'Output configuration is required' });
   }
 
-  if (!c.entropy) {
+  if (!c['entropy']) {
     errors.push({ path: 'entropy', message: 'Entropy configuration is required' });
   } else {
-    const entropy = c.entropy as Record<string, unknown>;
-    if (entropy.thresholds) {
-      const thresholds = entropy.thresholds as Record<string, unknown>;
+    const entropy = c['entropy'] as Record<string, unknown>;
+    if (entropy['thresholds']) {
+      const thresholds = entropy['thresholds'] as Record<string, unknown>;
       if (!isValidEntropyThresholds(thresholds as any)) {
         errors.push({
           path: 'entropy.thresholds',
@@ -151,16 +158,16 @@ export function validateConfigDetailed(config: unknown): ConfigValidationError[]
     }
   }
 
-  if (!c.diff) {
+  if (!c['diff']) {
     errors.push({ path: 'diff', message: 'Diff configuration is required' });
   }
 
-  if (!c.languages) {
+  if (!c['languages']) {
     errors.push({ path: 'languages', message: 'Languages configuration is required' });
   } else {
-    const languages = c.languages as Record<string, unknown>;
-    if (Array.isArray(languages.enabled)) {
-      for (const lang of languages.enabled) {
+    const languages = c['languages'] as Record<string, unknown>;
+    if (Array.isArray(languages['enabled'])) {
+      for (const lang of languages['enabled']) {
         if (!isLanguageSupported(lang as string)) {
           errors.push({
             path: 'languages.enabled',
@@ -171,11 +178,11 @@ export function validateConfigDetailed(config: unknown): ConfigValidationError[]
     }
   }
 
-  if (!c.git) {
+  if (!c['git']) {
     errors.push({ path: 'git', message: 'Git configuration is required' });
   }
 
-  if (!c.performance) {
+  if (!c['performance']) {
     errors.push({ path: 'performance', message: 'Performance configuration is required' });
   }
 

@@ -48,12 +48,12 @@ export class DiffProcessor {
   diff(oldNodes: SemanticNode[], newNodes: SemanticNode[]): SemanticDiff {
     const startTime = performance.now();
 
-    // Build Merkle trees
-    const oldTrees = oldNodes.map((node) => this.merkleBuilder.build(node));
-    const newTrees = newNodes.map((node) => this.merkleBuilder.build(node));
+    // Build Merkle trees - build() expects the array of root nodes
+    const oldTreeResult = this.merkleBuilder.build(oldNodes);
+    const newTreeResult = this.merkleBuilder.build(newNodes);
 
-    // Compare trees
-    const changes = this.compareTrees(oldTrees, newTrees);
+    // Compare trees using the roots
+    const changes = this.compareTrees(oldTreeResult.roots, newTreeResult.roots);
 
     // Build change summary
     const summary = this.buildSummary(changes);
@@ -64,8 +64,8 @@ export class DiffProcessor {
       changes,
       summary,
       metadata: {
-        oldNodeCount: this.countNodes(oldTrees),
-        newNodeCount: this.countNodes(newTrees),
+        oldNodeCount: this.countNodes(oldTreeResult.roots),
+        newNodeCount: this.countNodes(newTreeResult.roots),
         processingTime,
       },
     };

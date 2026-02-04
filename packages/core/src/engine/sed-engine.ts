@@ -124,26 +124,36 @@ export class SEDEngine {
 
     // Parse both versions
     const [oldNodes, newNodes] = await Promise.all([
-      this.parser.parse(input.oldCode, input.language, {
-        timeout: this.config.parseTimeout,
-      }),
-      this.parser.parse(input.newCode, input.language, {
-        timeout: this.config.parseTimeout,
-      }),
+      this.parser
+        .parse(input.oldCode, input.language, {
+          timeout: this.config.parseTimeout,
+          filePath: input.filePath,
+        })
+        .then((result) => result.nodes),
+      this.parser
+        .parse(input.newCode, input.language, {
+          timeout: this.config.parseTimeout,
+          filePath: input.filePath,
+        })
+        .then((result) => result.nodes),
     ]);
 
-    // Build Merkle trees
-    const oldTrees = oldNodes.map((n) => this.merkleBuilder.build(n));
-    const newTrees = newNodes.map((n) => this.merkleBuilder.build(n));
+    // Build Merkle trees - build() expects the array of root nodes
+    const oldTreeResult = this.merkleBuilder.build(oldNodes);
+    const newTreeResult = this.merkleBuilder.build(newNodes);
 
-    // Compute diff
-    const diff = this.computeDiff(oldTrees, newTrees);
+    // Compute diff using the roots
+    const diff = this.computeDiff(oldTreeResult.roots, newTreeResult.roots);
 
     // Categorize changes
-    const changes = this.categorizeChanges(oldTrees, newTrees, diff);
+    const changes = this.categorizeChanges(oldTreeResult.roots, newTreeResult.roots, diff);
 
-    // Analyze entropy
-    const analysis = this.entropyAnalyzer.analyze(oldTrees, newTrees, changes);
+    // Analyze entropy - pass the full tree results
+    const analysis = this.entropyAnalyzer.analyze(
+      oldTreeResult.roots,
+      newTreeResult.roots,
+      changes
+    );
 
     // Classify changes
     const entropyMap = new Map(analysis.nodeEntropies.map((e) => [e.nodeId, e]));
@@ -203,17 +213,19 @@ export class SEDEngine {
     trees: MerkleNode[];
     complexity: number;
   }> {
-    const nodes = await this.parser.parse(code, language, {
+    const parseResult = await this.parser.parse(code, language, {
       timeout: this.config.parseTimeout,
+      filePath,
     });
 
-    const trees = nodes.map((n) => this.merkleBuilder.build(n));
+    // Extract nodes array and build Merkle tree once
+    const treeResult = this.merkleBuilder.build(parseResult.nodes);
 
-    const complexity = this.calculateComplexity(trees);
+    const complexity = this.calculateComplexity(treeResult.roots);
 
     return {
-      nodes,
-      trees,
+      nodes: parseResult.nodes,
+      trees: treeResult.roots,
       complexity,
     };
   }
@@ -290,7 +302,12 @@ export class SEDEngine {
    * Validate parser is working for a language
    */
   async validateParser(language: SupportedLanguage): Promise<boolean> {
-    return this.parser.validate(language);
+    // Use a simple test snippet to validate the parser works
+    const testCode =
+      language === 'typescript' || language === 'javascript'
+        ? 'function test() {}'
+        : 'def test(): pass';
+    return this.parser.validate(testCode, language);
   }
 
   // Private methods

@@ -39,21 +39,22 @@
   "dependencies": {
     "@sed/shared": "workspace:*",
     "tree-sitter": "^0.21.0",
-    "tree-sitter-typescript": "^0.21.0",
+    "tree-sitter-c": "^0.21.0",
+    "tree-sitter-cpp": "^0.21.0",
+    "tree-sitter-go": "^0.21.0",
+    "tree-sitter-java": "^0.21.0",
     "tree-sitter-javascript": "^0.21.0",
     "tree-sitter-python": "^0.21.0",
     "tree-sitter-rust": "^0.21.0",
-    "tree-sitter-go": "^0.21.0",
-    "tree-sitter-java": "^0.21.0",
-    "tree-sitter-c": "^0.21.0",
-    "tree-sitter-cpp": "^0.21.0"
+    "tree-sitter-typescript": "^0.21.0"
   },
   "devDependencies": {
     "@sed/config": "workspace:*",
     "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^1.2.0",
+    "rimraf": "^5.0.0",
     "typescript": "^5.3.0",
-    "vitest": "^1.2.0",
-    "rimraf": "^5.0.0"
+    "vitest": "^1.2.0"
   },
   "peerDependencies": {
     "onnxruntime-node": "^1.16.0"

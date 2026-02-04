@@ -18,6 +18,8 @@ interface TSNode {
   text: string;
   startPosition: { row: number; column: number };
   endPosition: { row: number; column: number };
+  startIndex: number;
+  endIndex: number;
   children: TSNode[];
   namedChildren: TSNode[];
   parent: TSNode | null;
@@ -161,15 +163,25 @@ export class ASTWalker {
   private createSemanticNode(tsNode: TSNode, context: WalkContext): SemanticNode {
     const name = this.extractNodeName(tsNode, context.language);
     const nodeType = this.mapNodeType(tsNode.type, context.language);
+    const startLine = tsNode.startPosition.row + 1;
+    const endLine = tsNode.endPosition.row + 1;
+
+    // Generate stable ID based on semantic location (type:name:position)
+    // This ensures same node in different parses gets same ID for comparison
+    const id = `${nodeType}:${name}:${startLine}-${endLine}`;
 
     return {
-      id: generateId(),
+      id,
       type: nodeType,
       name,
-      startLine: tsNode.startPosition.row + 1,
-      endLine: tsNode.endPosition.row + 1,
+      startLine,
+      endLine,
       startColumn: tsNode.startPosition.column,
       endColumn: tsNode.endPosition.column,
+      range: {
+        start: tsNode.startIndex,
+        end: tsNode.endIndex,
+      },
       contentHash: contentHash(tsNode.text),
       children: [],
       metadata: {

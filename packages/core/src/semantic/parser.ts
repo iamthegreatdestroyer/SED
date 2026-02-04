@@ -44,16 +44,27 @@ export class SemanticParser {
    */
   async parse(
     source: string,
-    filePath: string,
-    language?: SupportedLanguage,
-    options: ParserOptions = {}
-  ): Promise<SemanticParseResult> {
+    language: SupportedLanguage,
+    options: ParserOptions & { filePath?: string } = {}
+  ): Promise<{
+    filePath: string;
+    language: SupportedLanguage;
+    nodes: SemanticNode[];
+    parseTime: number;
+    errors: string[];
+    metadata: {
+      totalNodes: number;
+      maxDepth: number;
+      hasErrors: boolean;
+    };
+  }> {
     const startTime = performance.now();
-    const resolvedLanguage = language ?? this.detectLanguage(filePath);
+    const resolvedLanguage = language;
     const resolvedOptions = { ...DEFAULT_OPTIONS, ...options };
+    const filePath = options.filePath ?? this.getDefaultFileName(language);
 
     if (!resolvedLanguage) {
-      throw new Error(`Could not detect language for file: ${filePath}`);
+      throw new Error(`Could not detect language`);
     }
 
     if (!this.registry.isSupported(resolvedLanguage)) {
@@ -92,6 +103,8 @@ export class SemanticParser {
           totalNodes: nodes.length,
           maxDepth: this.calculateMaxDepth(rootNodes),
           hasErrors: tree.rootNode.hasError,
+          parseTime,
+          language: resolvedLanguage,
         },
       };
     } catch (error) {
@@ -105,11 +118,13 @@ export class SemanticParser {
    * Parse multiple files in parallel
    */
   async parseMany(
-    files: Array<{ source: string; filePath: string; language?: SupportedLanguage }>,
+    files: Array<{ source: string; language: SupportedLanguage; filePath?: string }>,
     options: ParserOptions = {}
-  ): Promise<SemanticParseResult[]> {
+  ): Promise<SemanticNode[][]> {
     return Promise.all(
-      files.map((file) => this.parse(file.source, file.filePath, file.language, options))
+      files.map((file) =>
+        this.parse(file.source, file.language, { ...options, filePath: file.filePath })
+      )
     );
   }
 
@@ -127,11 +142,42 @@ export class SemanticParser {
   }
 
   /**
+   * Get list of all supported languages
+   */
+  getSupportedLanguages(): SupportedLanguage[] {
+    return this.registry.getSupportedLanguages();
+  }
+
+  /**
+   * Check if a language is supported
+   */
+  isLanguageSupported(language: SupportedLanguage): boolean {
+    return this.registry.isSupported(language);
+  }
+
+  /**
    * Detect language from file path
    */
   private detectLanguage(filePath: string): SupportedLanguage | null {
     const detected = detectLanguage(filePath);
     return this.registry.isSupported(detected) ? detected : null;
+  }
+
+  /**
+   * Get default file name for a language (for cases where filePath not provided)
+   */
+  private getDefaultFileName(language: SupportedLanguage): string {
+    const extensions: Record<SupportedLanguage, string> = {
+      typescript: 'file.ts',
+      javascript: 'file.js',
+      python: 'file.py',
+      go: 'file.go',
+      rust: 'file.rs',
+      java: 'File.java',
+      csharp: 'File.cs',
+      cpp: 'file.cpp',
+    };
+    return extensions[language] ?? 'file.txt';
   }
 
   /**

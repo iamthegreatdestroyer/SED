@@ -12,6 +12,7 @@ import type {
   EntropyHotspot,
   EntropyThresholds,
   EntropyLevel,
+  EntropyDistribution,
 } from '@sed/shared/types';
 import { DEFAULT_ENTROPY_THRESHOLDS } from '@sed/shared/types';
 
@@ -26,6 +27,15 @@ interface AnalysisOptions {
   maxHotspots?: number;
   trackPropagation?: boolean;
   includeUnchanged?: boolean;
+  hotspotThreshold?: number;
+}
+
+/**
+ * Options for detectHotspots method
+ */
+interface HotspotOptions {
+  maxHotspots?: number;
+  threshold?: number;
 }
 
 /**
@@ -36,6 +46,7 @@ const DEFAULT_OPTIONS: Required<AnalysisOptions> = {
   maxHotspots: 10,
   trackPropagation: true,
   includeUnchanged: false,
+  hotspotThreshold: 0.5,
 };
 
 /**
@@ -56,9 +67,130 @@ export class EntropyAnalyzer {
   }
 
   /**
-   * Analyze entropy for a set of changes
+   * Analyze entropy - Overloaded method
+   * 1. For MerkleNode-based analysis (original API)
+   * 2. For NodeEntropy array analysis (test API)
    */
   analyze(
+    oldRootsOrEntropies: MerkleNode[] | NodeEntropy[],
+    newRoots?: MerkleNode[],
+    changes?: {
+      added: MerkleNode[];
+      removed: MerkleNode[];
+      modified: Array<{ old: MerkleNode; new: MerkleNode }>;
+      unchanged: MerkleNode[];
+    }
+  ): EntropyAnalysis {
+    // Check if first argument is NodeEntropy[] (test API)
+    if (this.isNodeEntropyArray(oldRootsOrEntropies)) {
+      return this.analyzeFromEntropies(oldRootsOrEntropies as NodeEntropy[]);
+    }
+
+    // Otherwise, use original MerkleNode-based API
+    if (!newRoots || !changes) {
+      throw new Error('MerkleNode-based analysis requires newRoots and changes parameters');
+    }
+    return this.analyzeFromChanges(oldRootsOrEntropies as MerkleNode[], newRoots, changes);
+  }
+
+  /**
+   * Type guard to check if input is NodeEntropy array
+   */
+  private isNodeEntropyArray(input: unknown): boolean {
+    if (!Array.isArray(input)) return false;
+    if (input.length === 0) return true; // Empty array treated as NodeEntropy[]
+    // Check first element has NodeEntropy shape
+    const first = input[0];
+    return (
+      typeof first === 'object' &&
+      first !== null &&
+      'nodeId' in first &&
+      'entropy' in first &&
+      'normalizedEntropy' in first &&
+      'level' in first
+    );
+  }
+
+  /**
+   * Analyze entropy from NodeEntropy array (test API)
+   */
+  private analyzeFromEntropies(nodeEntropies: NodeEntropy[]): EntropyAnalysis {
+    const startTime = performance.now();
+
+    if (nodeEntropies.length === 0) {
+      return {
+        totalEntropy: 0,
+        normalizedEntropy: 0,
+        level: 'minimal',
+        nodeEntropies: [],
+        hotspots: [],
+        distribution: {
+          minimal: 0,
+          low: 0,
+          moderate: 0,
+          high: 0,
+          critical: 0,
+        },
+        averageEntropy: 0,
+        metadata: {
+          totalChanges: 0,
+          addedCount: 0,
+          removedCount: 0,
+          modifiedCount: 0,
+          analysisTime: performance.now() - startTime,
+        },
+      };
+    }
+
+    // Calculate total entropy
+    const totalEntropy = this.calculator.calculateTotalEntropy(nodeEntropies);
+
+    // Identify hotspots
+    const hotspots = this.identifyHotspots(nodeEntropies);
+
+    // Calculate distribution
+    const distribution = this.calculateDistribution(nodeEntropies);
+
+    // Calculate average from normalizedEntropy values
+    const totalNormalizedEntropy = nodeEntropies.reduce((sum, n) => sum + n.normalizedEntropy, 0);
+    const averageEntropy =
+      nodeEntropies.length > 0 ? totalNormalizedEntropy / nodeEntropies.length : 0;
+
+    // Determine overall level - use provided level if single node, otherwise calculate
+    const overallLevel =
+      nodeEntropies.length === 1
+        ? nodeEntropies[0].level
+        : this.determineOverallLevel(totalEntropy, nodeEntropies);
+
+    const analysisTime = performance.now() - startTime;
+
+    // Count by change type
+    const addedCount = nodeEntropies.filter((n) => n.changeType === 'added').length;
+    const removedCount = nodeEntropies.filter((n) => n.changeType === 'removed').length;
+    const modifiedCount = nodeEntropies.filter((n) => n.changeType === 'modified').length;
+
+    return {
+      totalEntropy,
+      normalizedEntropy: averageEntropy,
+      level: overallLevel,
+      nodeEntropies,
+      hotspots,
+      distribution,
+      averageEntropy,
+      metadata: {
+        totalChanges: nodeEntropies.length,
+        addedCount,
+        removedCount,
+        modifiedCount,
+        analysisTime,
+      },
+    };
+  }
+
+  /**
+   * Analyze entropy from MerkleNode changes (original API)
+   */
+  private analyzeFromChanges(
     oldRoots: MerkleNode[],
     newRoots: MerkleNode[],
     changes: {
@@ -139,7 +271,55 @@ export class EntropyAnalyzer {
   }
 
   /**
-   * Compare entropy between two analyses
+   * Detect entropy hotspots from NodeEntropy array
+   */
+  detectHotspots(nodeEntropies: NodeEntropy[], options?: HotspotOptions): EntropyHotspot[] {
+    const maxHotspots = options?.maxHotspots ?? this.options.maxHotspots;
+    const threshold = options?.threshold ?? this.options.hotspotThreshold;
+
+    // Filter by threshold
+    const filtered = nodeEntropies.filter((n) => n.normalizedEntropy >= threshold);
+
+    // Sort by entropy (descending)
+    const sorted = [...filtered].sort((a, b) => b.entropy - a.entropy);
+
+    // Take top N
+    const topN = sorted.slice(0, maxHotspots);
+
+    // Convert to hotspots
+    return topN.map((node, index) => ({
+      nodeId: node.nodeId,
+      nodeName: node.nodeName,
+      nodeType: node.nodeType,
+      entropy: node.entropy,
+      normalizedEntropy: node.normalizedEntropy,
+      level: node.level,
+      rank: index + 1,
+      recommendation: this.getHotspotRecommendation(node),
+    }));
+  }
+
+  /**
+   * Calculate distribution of entropy levels (public method)
+   */
+  calculateDistribution(nodeEntropies: NodeEntropy[]): EntropyDistribution {
+    const distribution: EntropyDistribution = {
+      minimal: 0,
+      low: 0,
+      moderate: 0,
+      high: 0,
+      critical: 0,
+    };
+
+    for (const node of nodeEntropies) {
+      distribution[node.level]++;
+    }
+
+    return distribution;
+  }
+
+  /**
+   * Compare entropy between two analyses (legacy method name)
    */
   compare(
     analysis1: EntropyAnalysis,
@@ -150,6 +330,23 @@ export class EntropyAnalyzer {
     newHotspots: EntropyHotspot[];
     resolvedHotspots: EntropyHotspot[];
   } {
+    return this.compareAnalyses(analysis1, analysis2);
+  }
+
+  /**
+   * Compare entropy between two analyses (test API)
+   */
+  compareAnalyses(
+    analysis1: EntropyAnalysis,
+    analysis2: EntropyAnalysis
+  ): {
+    entropyDelta: number;
+    levelChange: { from: EntropyLevel; to: EntropyLevel };
+    newHotspots: EntropyHotspot[];
+    resolvedHotspots: EntropyHotspot[];
+    improved: boolean;
+    regressed: boolean;
+  } {
     const entropyDelta = analysis2.totalEntropy - analysis1.totalEntropy;
 
     const hotspot1Names = new Set(analysis1.hotspots.map((h) => h.nodeName));
@@ -157,6 +354,24 @@ export class EntropyAnalyzer {
 
     const newHotspots = analysis2.hotspots.filter((h) => !hotspot1Names.has(h.nodeName));
     const resolvedHotspots = analysis1.hotspots.filter((h) => !hotspot2Names.has(h.nodeName));
+
+    // Define entropy level ordering for comparison
+    const levelOrder: Record<EntropyLevel, number> = {
+      minimal: 0,
+      low: 1,
+      moderate: 2,
+      high: 3,
+      critical: 4,
+    };
+
+    const level1Order = levelOrder[analysis1.level];
+    const level2Order = levelOrder[analysis2.level];
+
+    // Improved if entropy decreased or level decreased
+    const improved = entropyDelta < 0 || level2Order < level1Order;
+
+    // Regressed if entropy increased significantly or level increased
+    const regressed = entropyDelta > 0 || level2Order > level1Order;
 
     return {
       entropyDelta,
@@ -166,6 +381,8 @@ export class EntropyAnalyzer {
       },
       newHotspots,
       resolvedHotspots,
+      improved,
+      regressed,
     };
   }
 
@@ -275,25 +492,6 @@ export class EntropyAnalyzer {
     }
 
     return `Modified ${node.nodeType}. Standard review recommended.`;
-  }
-
-  /**
-   * Calculate distribution across entropy levels
-   */
-  private calculateDistribution(nodeEntropies: NodeEntropy[]): Record<EntropyLevel, number> {
-    const distribution: Record<EntropyLevel, number> = {
-      minimal: 0,
-      low: 0,
-      moderate: 0,
-      high: 0,
-      critical: 0,
-    };
-
-    for (const node of nodeEntropies) {
-      distribution[node.level]++;
-    }
-
-    return distribution;
   }
 
   /**
