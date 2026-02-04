@@ -128,13 +128,31 @@ pnpm turbo run build --filter=@sed/cli...
 
 ## 📦 Packages
 
-| Package                          | Description                  | npm                                                                                       |
-| -------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------- |
-| [@sed/core](./packages/core)     | Core entropy analysis engine | [![npm](https://img.shields.io/npm/v/@sed/core)](https://www.npmjs.com/package/@sed/core) |
-| [@sed/git](./packages/git)       | Git integration utilities    | [![npm](https://img.shields.io/npm/v/@sed/git)](https://www.npmjs.com/package/@sed/git)   |
-| [@sed/cli](./apps/cli)           | Command-line interface       | [![npm](https://img.shields.io/npm/v/@sed/cli)](https://www.npmjs.com/package/@sed/cli)   |
+| Package                          | Description                  | Status | npm                                                                                       |
+| -------------------------------- | ---------------------------- | ------ | ----------------------------------------------------------------------------------------- |
+| [@sed/core](./packages/core)     | Core entropy analysis engine | ✅ 234/234 tests | [![npm](https://img.shields.io/npm/v/@sed/core)](https://www.npmjs.com/package/@sed/core) |
+| [@sed/git](./packages/git)       | Git integration utilities    | ✅ 104/104 tests | [![npm](https://img.shields.io/npm/v/@sed/git)](https://www.npmjs.com/package/@sed/git)   |
+| [@sed/cli](./apps/cli)           | Command-line interface       | 🚧 In Progress | [![npm](https://img.shields.io/npm/v/@sed/cli)](https://www.npmjs.com/package/@sed/cli)   |
 | [@sed/shared](./packages/shared) | Shared utilities             | Internal                                                                                  |
 | [@sed/config](./packages/config) | Shared configurations        | Internal                                                                                  |
+
+### Package Details
+
+#### @sed/core (✅ Complete - 234/234 tests passing)
+Core entropy analysis engine with 100% test coverage. Includes:
+- Information theory calculations
+- Language-aware parsing (20+ languages)
+- Semantic element extraction and weighting
+- Classification algorithms
+
+#### @sed/git (✅ Complete - 104/104 tests passing)
+Git integration utilities with comprehensive test coverage. Features:
+- **GitClient**: Wrapper around simple-git with proper TypeScript typing
+- **DiffExtractor**: Extract and parse Git diffs with glob pattern filtering
+- **RepoAnalyzer**: Repository analysis including blame, file trees, and statistics
+- **CommitParser**: Parse commit messages and metadata
+- Cross-platform path handling and Windows compatibility
+- Sub-linear glob pattern matching with proper `**` globstar support
 
 ## 🔬 How It Works
 

@@ -262,7 +262,7 @@ describe('RepoAnalyzer', () => {
 
   describe('getBlame', () => {
     it('should return blame information', async () => {
-      const blameOutput = `abc123def456789 1 1 1
+      const blameOutput = `abc123def456789abc123def456789abc123def4 1 1 1
 author Alice
 author-mail <alice@example.com>
 author-time 1704067200
@@ -280,7 +280,7 @@ filename test.ts
       const blame = await analyzer.getBlame('test.ts');
 
       expect(blame).toHaveLength(1);
-      expect(blame[0].commit).toBe('abc123def456789');
+      expect(blame[0].commit).toBe('abc123def456789abc123def456789abc123def4');
       expect(blame[0].author).toBe('Alice');
       expect(blame[0].content).toBe('const x = 1;');
     });

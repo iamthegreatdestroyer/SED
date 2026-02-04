@@ -216,7 +216,7 @@ describe('DiffExtractor', () => {
 
     it('should respect custom include patterns', () => {
       const customExtractor = new DiffExtractor(mockGit as unknown as GitClient, {
-        includePatterns: ['*.ts'],
+        includePatterns: ['**/*.ts'],
       });
 
       expect(customExtractor.shouldProcessFile('src/index.ts')).toBe(true);
@@ -296,11 +296,12 @@ describe('DiffExtractor', () => {
       expect(result.hunks[0].newStart).toBe(1);
       expect(result.hunks[0].newLines).toBe(6);
 
-      expect(result.hunks[0].lines).toHaveLength(4);
+      expect(result.hunks[0].lines).toHaveLength(5);
       expect(result.hunks[0].lines[0].type).toBe('context');
       expect(result.hunks[0].lines[1].type).toBe('deletion');
       expect(result.hunks[0].lines[2].type).toBe('addition');
       expect(result.hunks[0].lines[3].type).toBe('addition');
+      expect(result.hunks[0].lines[4].type).toBe('context');
     });
 
     it('should parse multiple hunks', async () => {

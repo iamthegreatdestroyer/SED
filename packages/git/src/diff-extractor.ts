@@ -260,23 +260,25 @@ export class DiffExtractor {
    * Check if file should be processed
    */
   shouldProcessFile(filePath: string): boolean {
-    // Check exclude patterns
+    // Check exclude patterns first
     for (const pattern of this.options.excludePatterns) {
       if (this.matchesPattern(filePath, pattern)) {
         return false;
       }
     }
 
-    // Check include patterns if specified
+    // If include patterns are specified, file must match at least one
     if (this.options.includePatterns.length > 0) {
       for (const pattern of this.options.includePatterns) {
         if (this.matchesPattern(filePath, pattern)) {
           return true;
         }
       }
+      // No include pattern matched
       return false;
     }
 
+    // No include patterns specified and not excluded
     return true;
   }
 
@@ -287,11 +289,25 @@ export class DiffExtractor {
   }
 
   private matchesPattern(filePath: string, pattern: string): boolean {
-    // Simple glob matching
-    const regexPattern = pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*').replace(/\?/g, '.');
+    // Normalize path separators to forward slashes for consistent matching
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    const normalizedPattern = pattern.replace(/\\/g, '/');
+
+    // Convert glob pattern to regex
+    // Handle ** by converting to a special marker first to avoid conflicts with *
+    let regexPattern = normalizedPattern
+      .replace(/\*\*/g, '<<<GLOBSTAR>>>') // Placeholder for **
+      .replace(/\*/g, '[^/]*') // * matches within a path segment (not including /)
+      .replace(/\?/g, '.'); // ? matches any single character
+
+    // Convert ** to match zero or more path segments
+    // We need to handle leading/trailing ** specially
+    regexPattern = regexPattern.replace(/<<<GLOBSTAR>>>\//g, '(?:.*/)?'); // **/ at start or middle
+    regexPattern = regexPattern.replace(/\/<<<GLOBSTAR>>>/g, '(?:/.*)?'); // /** at end or middle
+    regexPattern = regexPattern.replace(/<<<GLOBSTAR>>>/g, '.*'); // ** alone
 
     const regex = new RegExp(`^${regexPattern}$`);
-    return regex.test(filePath);
+    return regex.test(normalizedPath);
   }
 
   private parseHunks(patch: string): DiffHunk[] {
@@ -326,13 +342,14 @@ export class DiffExtractor {
       }
 
       if (currentHunk) {
-        if (line.startsWith('+')) {
+        // Only process lines that are part of the diff (start with +, -, or space)
+        if (line.startsWith('+') && !line.startsWith('+++')) {
           currentHunk.lines.push({
             type: 'addition',
             content: line.slice(1),
             newLineNumber: newLine++,
           });
-        } else if (line.startsWith('-')) {
+        } else if (line.startsWith('-') && !line.startsWith('---')) {
           currentHunk.lines.push({
             type: 'deletion',
             content: line.slice(1),
@@ -346,6 +363,7 @@ export class DiffExtractor {
             newLineNumber: newLine++,
           });
         }
+        // Ignore other lines (metadata, file headers, etc.)
       }
     }
 

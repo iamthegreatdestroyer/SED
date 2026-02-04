@@ -344,7 +344,9 @@ export class RepoAnalyzer {
     let lineNumber = 0;
 
     for (const line of lines) {
-      if (line.match(/^[a-f0-9]{40}/)) {
+      // Match commit line with 40-character hex SHA
+      const commitMatch = line.match(/^([a-f0-9]{40})/);
+      if (commitMatch) {
         const parts = line.split(' ');
         currentEntry.commit = parts[0];
         lineNumber = parseInt(parts[2], 10);

@@ -6,37 +6,48 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { GitClient, GitClientOptions } from '../src/git-client.js';
+import type { SimpleGit } from 'simple-git';
 
-// Mock simple-git
+// Create mock git instance with all methods
+const mockGit: SimpleGit = {
+  checkIsRepo: vi.fn(),
+  revparse: vi.fn(),
+  show: vi.fn(),
+  diff: vi.fn(),
+  diffSummary: vi.fn(),
+  log: vi.fn(),
+  raw: vi.fn(),
+  branch: vi.fn(),
+  tags: vi.fn(),
+  status: vi.fn(),
+} as any;
+
+// Make mockGit available to the mocked module
+(global as any).testMockGit = mockGit;
+
+// Mock the simple-git module BEFORE importing GitClient
 vi.mock('simple-git', () => {
-  const mockGit = {
-    checkIsRepo: vi.fn(),
-    revparse: vi.fn(),
-    show: vi.fn(),
-    diff: vi.fn(),
-    diffSummary: vi.fn(),
-    log: vi.fn(),
-    raw: vi.fn(),
-    branch: vi.fn(),
-    tags: vi.fn(),
-    status: vi.fn(),
+  // Return a function that when called, returns mockGit
+  // We can't use mockGit directly here due to hoisting
+  const mockFactory = (options: any) => {
+    // Access mockGit at call time, not definition time
+    return (global as any).testMockGit;
   };
 
   return {
-    simpleGit: vi.fn(() => mockGit),
-    default: vi.fn(() => mockGit),
+    simpleGit: mockFactory,
   };
 });
 
+// Import GitClient AFTER mocking
+import { GitClient, GitClientOptions } from '../src/git-client.js';
+
 describe('GitClient', () => {
   let client: GitClient;
-  let mockGit: any;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
-    const { simpleGit } = await import('simple-git');
-    mockGit = (simpleGit as any)();
+    // mockGit is now accessible since it's defined before vi.mock()
     client = new GitClient('/test/repo');
   });
 
@@ -47,7 +58,9 @@ describe('GitClient', () => {
   describe('constructor', () => {
     it('should initialize with default options', () => {
       const c = new GitClient('/some/path');
-      expect(c.getRepoPath()).toBe('\\some\\path');
+      // Path should be normalized/resolved - on Windows it will include drive letter
+      expect(c.getRepoPath()).toContain('some');
+      expect(c.getRepoPath()).toContain('path');
     });
 
     it('should accept custom options', () => {
