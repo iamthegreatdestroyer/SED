@@ -309,8 +309,8 @@ importers:
         specifier: ^0.21.0
         version: 0.21.4(tree-sitter@0.21.1)
       tree-sitter-python:
-        specifier: ^0.21.0
-        version: 0.21.0(tree-sitter@0.21.1)
+        specifier: ^0.25.0
+        version: 0.25.0(tree-sitter@0.21.1)
       tree-sitter-rust:
         specifier: ^0.21.0
         version: 0.21.0(tree-sitter@0.21.1)
@@ -8454,17 +8454,16 @@ packages:
       tree-sitter: 0.21.1
     dev: false
 
-  /tree-sitter-python@0.21.0(tree-sitter@0.21.1):
-    resolution: {integrity: sha512-IUKx7JcTVbByUx1iHGFS/QsIjx7pqwTMHL9bl/NGyhyyydbfNrpruo2C7W6V4KZrbkkCOlX8QVrCoGOFW5qecg==}
+  /tree-sitter-python@0.25.0(tree-sitter@0.21.1):
+    resolution: {integrity: sha512-eCmJx6zQa35GxaCtQD+wXHOhYqBxEL+bp71W/s3fcDMu06MrtzkVXR437dRrCrbrDbyLuUDJpAgycs7ncngLXw==}
     requiresBuild: true
     peerDependencies:
-      tree-sitter: ^0.21.0
-      tree_sitter: '*'
+      tree-sitter: ^0.25.0
     peerDependenciesMeta:
-      tree_sitter:
+      tree-sitter:
         optional: true
     dependencies:
-      node-addon-api: 7.1.1
+      node-addon-api: 8.5.0
       node-gyp-build: 4.8.4
       tree-sitter: 0.21.1
     dev: false
