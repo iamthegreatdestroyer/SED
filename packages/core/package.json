@@ -39,7 +39,7 @@
   "dependencies": {
     "@sed/shared": "workspace:*",
     "tree-sitter": "^0.21.0",
-    "tree-sitter-c": "^0.21.0",
+    "tree-sitter-c": "^0.24.1",
     "tree-sitter-cpp": "^0.21.0",
     "tree-sitter-go": "^0.21.0",
     "tree-sitter-java": "^0.21.0",
