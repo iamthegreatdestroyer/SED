@@ -7,7 +7,13 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { DiffProcessor } from '../src/engine/diff-processor.js';
-import type { SemanticNode, MerkleNode } from '@sed/shared/types';
+import type {
+  SemanticNode,
+  SemanticNodeType,
+  MerkleNode,
+  DiffChange,
+  DiffOperation,
+} from '@sed/shared/types';
 
 describe('DiffProcessor', () => {
   let processor: DiffProcessor;
@@ -23,7 +29,7 @@ describe('DiffProcessor', () => {
       const result = processor.diff(nodes, nodes);
 
       expect(result.changes).toHaveLength(0);
-      expect(result.summary.totalChanges).toBe(0);
+      expect(result.summary?.totalChanges).toBe(0);
     });
 
     it('should detect added nodes', () => {
@@ -32,7 +38,7 @@ describe('DiffProcessor', () => {
 
       const result = processor.diff(oldNodes, newNodes);
 
-      expect(result.summary.added).toBeGreaterThanOrEqual(0);
+      expect(result.summary?.added).toBeGreaterThanOrEqual(0);
     });
 
     it('should detect removed nodes', () => {
@@ -41,14 +47,14 @@ describe('DiffProcessor', () => {
 
       const result = processor.diff(oldNodes, newNodes);
 
-      expect(result.summary.removed).toBeGreaterThanOrEqual(0);
+      expect(result.summary?.removed).toBeGreaterThanOrEqual(0);
     });
 
-    it('should include metadata', () => {
+    it('should include valid stats', () => {
       const result = processor.diff([], []);
 
-      expect(result.metadata).toBeDefined();
-      expect(typeof result.metadata.processingTime).toBe('number');
+      expect(result.stats).toBeDefined();
+      expect(typeof result.stats.entropyScore).toBe('number');
     });
   });
 
@@ -180,64 +186,106 @@ describe('DiffProcessor', () => {
 
 // Helper functions
 
-function createSemanticNode(type: string, name: string, children: SemanticNode[]): SemanticNode {
+function createSemanticNode(
+  type: SemanticNodeType,
+  name: string,
+  children: SemanticNode[] = []
+): SemanticNode {
+  const id = `node-${name}-${Math.random().toString(36).slice(2, 9)}`;
   return {
-    id: `node-${name}-${Math.random().toString(36).slice(2, 9)}`,
+    id,
     type,
     name,
-    range: { start: 0, end: 100 },
+    hash: `hash-${id}`,
+    metadata: {},
+    contentHash: `content-${id}`,
+    range: {
+      start: { line: 0, column: 0, offset: 0 },
+      end: { line: 5, column: 0, offset: 100 },
+    },
+    startLine: 0,
+    endLine: 5,
     children,
   };
 }
 
 function createMerkleNode(
-  type: string,
+  type: SemanticNodeType,
   name: string,
-  children: MerkleNode[],
-  merkleHash = `merkle-${name}`,
+  children: MerkleNode[] = [],
+  hash = `merkle-${name}`,
   depth = 0
 ): MerkleNode {
-  const id = `node-${name}-${Math.random().toString(36).slice(2, 9)}`;
+  const semanticNode = createSemanticNode(
+    type,
+    name,
+    children.map((c) => c.semanticNode)
+  );
 
   return {
-    id,
+    hash,
+    semanticNode,
+    children,
+    structuralHash: `struct-${name}`,
+    contentHash: `content-${name}`,
+    merkleHash: hash,
+    id: semanticNode.id,
     type,
     name,
     depth,
-    contentHash: `content-${name}`,
-    structuralHash: `struct-${name}`,
-    merkleHash,
-    children,
+    startLine: 0,
+    endLine: 5,
   };
 }
 
-function createChange(
-  changeType: 'added' | 'removed' | 'modified',
-  node: MerkleNode
-): {
-  changeType: 'added' | 'removed' | 'modified';
-  nodeId: string;
-  nodeName: string;
-  nodeType: string;
-  oldNode?: MerkleNode;
-  newNode?: MerkleNode;
-} {
+function createChange(changeType: 'added' | 'removed' | 'modified', node: MerkleNode): DiffChange {
+  const operation: DiffOperation =
+    changeType === 'added' ? 'add' : changeType === 'removed' ? 'remove' : 'modify';
+
+  // Convert MerkleNode to SemanticNode for DiffChange (which expects SemanticNode type)
+  const semanticNode: SemanticNode = node.semanticNode;
+
   return {
+    id: `change-${node.id}`,
+    operation,
+    path: node.name,
+    range: {
+      start: { line: 0, column: 0, offset: 0 },
+      end: { line: 5, column: 0, offset: 100 },
+    },
+    entropy: {
+      totalEntropy: 0.5,
+      entropy: 0.5, // Convenience alias for totalEntropy
+      structuralEntropy: 0.3,
+      semanticEntropy: 0.2,
+      propagationFactor: 1.0,
+      changeScore: 0.5,
+      level: 'moderate' as const,
+      nodeEntropies: [],
+      hotspots: [],
+      normalizedEntropy: 0.5, // Convenience property
+      components: {
+        structural: 0.3,
+        semantic: 0.2,
+        syntactic: 0.0,
+      },
+      metadata: {
+        algorithm: 'shannon',
+        version: '1.0.0',
+        computeTime: 0,
+        changeType,
+      },
+    },
+    description: `${operation} ${node.type} ${node.name}`,
     changeType,
     nodeId: node.id,
     nodeName: node.name,
-    nodeType: node.type,
-    newNode: changeType !== 'removed' ? node : undefined,
-    oldNode: changeType !== 'added' ? node : undefined,
+    nodeType: node.type as string,
+    newNode: changeType !== 'removed' ? semanticNode : undefined,
+    oldNode: changeType !== 'added' ? semanticNode : undefined,
   };
 }
 
 function semanticFromMerkle(merkle: MerkleNode): SemanticNode {
-  return {
-    id: merkle.id,
-    type: merkle.type,
-    name: merkle.name,
-    range: { start: 0, end: 100 },
-    children: merkle.children.map(semanticFromMerkle),
-  };
+  return merkle.semanticNode;
 }

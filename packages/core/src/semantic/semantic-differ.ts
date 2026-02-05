@@ -19,6 +19,7 @@ import type {
 } from '@sed/shared/types';
 import { DEFAULT_DIFF_OPTIONS } from '@sed/shared/types';
 import { generateId } from '@sed/shared/utils';
+import { createSourcePosition } from '../utils/helpers.js';
 
 import { SemanticParser } from './parser.js';
 import { MerkleTreeBuilder } from './merkle-tree.js';
@@ -222,10 +223,10 @@ export class SemanticDiffer {
         operation: 'add',
         path: this.getNodePath(node),
         range: {
-          start: { line: node.startLine, column: 0 },
-          end: { line: node.endLine, column: 0 },
+          start: createSourcePosition(node.startLine, 0, 0),
+          end: createSourcePosition(node.endLine, 0, 0),
         },
-        afterNode: node,
+        afterNode: node as unknown as SemanticNode,
         entropy: this.convertToEntropyAnalysis(entropyResult),
         description: `Added ${node.type} '${node.name}'`,
       });
@@ -239,10 +240,10 @@ export class SemanticDiffer {
         operation: 'remove',
         path: this.getNodePath(node),
         range: {
-          start: { line: node.startLine, column: 0 },
-          end: { line: node.endLine, column: 0 },
+          start: createSourcePosition(node.startLine, 0, 0),
+          end: createSourcePosition(node.endLine, 0, 0),
         },
-        beforeNode: node,
+        beforeNode: node as unknown as SemanticNode,
         entropy: this.convertToEntropyAnalysis(entropyResult),
         description: `Removed ${node.type} '${node.name}'`,
       });
@@ -259,11 +260,11 @@ export class SemanticDiffer {
           operation: 'modify',
           path: this.getNodePath(newNode),
           range: {
-            start: { line: newNode.startLine, column: 0 },
-            end: { line: newNode.endLine, column: 0 },
+            start: createSourcePosition(newNode.startLine, 0, 0),
+            end: createSourcePosition(newNode.endLine, 0, 0),
           },
-          beforeNode: oldNode,
-          afterNode: newNode,
+          beforeNode: oldNode as unknown as SemanticNode,
+          afterNode: newNode as unknown as SemanticNode,
           entropy: this.convertToEntropyAnalysis(entropyResult),
           description: `Modified ${newNode.type} '${newNode.name}'`,
         });
@@ -297,18 +298,26 @@ export class SemanticDiffer {
    */
   private convertToEntropyAnalysis(nodeEntropy: NodeEntropy): EntropyAnalysis {
     return {
+      totalEntropy: nodeEntropy.entropy,
+      structuralEntropy: nodeEntropy.components.structural,
+      semanticEntropy: nodeEntropy.components.semantic,
+      propagationFactor: 1.0,
+      changeScore: nodeEntropy.entropy,
       entropy: nodeEntropy.entropy,
       normalizedEntropy: nodeEntropy.normalizedEntropy,
       level: nodeEntropy.level,
+      nodeEntropies: [],
+      hotspots: [],
       components: {
         structural: nodeEntropy.components.structural,
         semantic: nodeEntropy.components.semantic,
-        propagation: nodeEntropy.components.propagation,
+        syntactic: nodeEntropy.components.syntactic ?? 0,
       },
       metadata: {
-        nodeType: nodeEntropy.nodeType,
+        algorithm: 'semantic-differ-v1',
+        version: '1.0.0',
+        computeTime: 0,
         changeType: nodeEntropy.changeType,
-        depth: 0, // TODO: Track depth properly
       },
     };
   }
@@ -364,18 +373,25 @@ export class SemanticDiffer {
   private computeTotalEntropy(changes: DiffChange[]): EntropyAnalysis {
     if (changes.length === 0) {
       return {
+        totalEntropy: 0,
+        structuralEntropy: 0,
+        semanticEntropy: 0,
+        propagationFactor: 1.0,
+        changeScore: 0,
         entropy: 0,
         normalizedEntropy: 0,
         level: 'none',
+        nodeEntropies: [],
+        hotspots: [],
         components: {
           structural: 0,
           semantic: 0,
-          propagation: 0,
+          syntactic: 0,
         },
         metadata: {
-          nodeType: 'unknown',
-          changeType: 'none',
-          depth: 0,
+          algorithm: 'semantic-differ-v1',
+          version: '1.0.0',
+          computeTime: 0,
         },
       };
     }
@@ -383,30 +399,37 @@ export class SemanticDiffer {
     let totalEntropy = 0;
     let totalStructural = 0;
     let totalSemantic = 0;
-    let totalPropagation = 0;
+    let totalSyntactic = 0;
 
     for (const change of changes) {
       totalEntropy += change.entropy.entropy;
       totalStructural += change.entropy.components.structural;
       totalSemantic += change.entropy.components.semantic;
-      totalPropagation += change.entropy.components.propagation;
+      totalSyntactic += change.entropy.components.syntactic ?? 0;
     }
 
     const avgEntropy = totalEntropy / changes.length;
 
     return {
+      totalEntropy,
+      structuralEntropy: totalStructural,
+      semanticEntropy: totalSemantic,
+      propagationFactor: 1.0,
+      changeScore: totalEntropy,
       entropy: totalEntropy,
       normalizedEntropy: avgEntropy,
       level: this.determineRiskLevel(avgEntropy),
+      nodeEntropies: [],
+      hotspots: [],
       components: {
         structural: totalStructural / changes.length,
         semantic: totalSemantic / changes.length,
-        propagation: totalPropagation / changes.length,
+        syntactic: totalSyntactic / changes.length,
       },
       metadata: {
-        nodeType: 'aggregated',
-        changeType: 'multiple',
-        depth: 0,
+        algorithm: 'semantic-differ-v1',
+        version: '1.0.0',
+        computeTime: 0,
       },
     };
   }

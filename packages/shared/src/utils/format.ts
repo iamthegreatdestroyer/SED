@@ -16,8 +16,10 @@ export const COLORS = {
   dim: '\x1b[2m',
 
   // Entropy levels
+  none: '\x1b[90m', // gray
   minimal: '\x1b[32m', // green
   low: '\x1b[36m', // cyan
+  medium: '\x1b[33m', // yellow
   moderate: '\x1b[33m', // yellow
   high: '\x1b[35m', // magenta
   critical: '\x1b[31m', // red

@@ -119,13 +119,15 @@ export class MerkleTreeBuilder {
       }
 
       return {
-        id: node.id,
-        type: node.type,
-        name: node.name,
+        hash: merkleHash,
         merkleHash,
+        semanticNode: node,
         contentHash: node.contentHash,
         structuralHash: this.computeStructuralHash(node),
         children: merkleChildren,
+        id: node.id,
+        name: node.name,
+        type: node.type,
         startLine: node.startLine,
         endLine: node.endLine,
         depth,
@@ -232,7 +234,7 @@ export class MerkleTreeBuilder {
             changes.push({ path: nodePath, oldNode, newNode, changeType: 'modified' });
           } else {
             // Content is same, difference is in children - recurse
-            findChanges(oldNode.children, newNode.children, nodePath);
+            findChanges([...oldNode.children], [...newNode.children], nodePath);
           }
         }
         // If hashes match, entire subtree is unchanged - skip
@@ -264,7 +266,7 @@ export class MerkleTreeBuilder {
 
     // Combine all root hashes
     const hashes = roots.map((r) => r.merkleHash);
-    return combineHashes(hashes);
+    return combineHashes(...hashes);
   }
 
   /**
@@ -305,11 +307,22 @@ export class MerkleTreeBuilder {
    * Compute structural hash for a semantic node
    */
   private computeStructuralHash(node: SemanticNode): string {
+    const depth = this.getNodeDepth(node);
     return structuralHash({
       type: node.type,
-      name: node.name,
-      childCount: node.children.length,
+      childTypes: node.children.map((c) => c.type),
+      depth,
     });
+  }
+
+  /**
+   * Calculate the depth of a node in the semantic tree
+   */
+  private getNodeDepth(node: SemanticNode): number {
+    if (node.children.length === 0) {
+      return 0;
+    }
+    return 1 + Math.max(...node.children.map((c) => this.getNodeDepth(c)));
   }
 
   /**
@@ -324,7 +337,7 @@ export class MerkleTreeBuilder {
       return sha256(components[0]!);
     }
 
-    return combineHashes(components);
+    return combineHashes(...components);
   }
 
   /**

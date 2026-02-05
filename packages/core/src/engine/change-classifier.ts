@@ -172,17 +172,26 @@ export class ChangeClassifier {
     entropies: Map<string, NodeEntropy>
   ): ChangeClassification[] {
     return changes.map((change) => {
-      const entropy = entropies.get(change.nodeId);
+      const entropy = entropies.get(change.nodeId ?? '');
       if (!entropy) {
         // Create default entropy for untracked changes
         const defaultEntropy: NodeEntropy = {
-          nodeId: change.nodeId,
-          nodeName: change.nodeName,
-          nodeType: change.nodeType,
+          nodeId: change.nodeId ?? '',
+          nodeName: change.nodeName ?? '',
+          nodeType: change.nodeType ?? '',
           entropy: 0,
           normalizedEntropy: 0,
+          shannon: 0,
+          conditional: 0,
+          relative: 0,
           level: 'minimal',
-          changeType: change.changeType,
+          type: change.changeType || 'modified',
+          changeType: change.changeType || 'modified',
+          components: {
+            structural: 0,
+            semantic: 0,
+            syntactic: 0,
+          },
         };
         return this.classify(change, defaultEntropy);
       }
@@ -228,8 +237,10 @@ export class ChangeClassifier {
 
     // Count by level
     const byLevel: Record<EntropyLevel, number> = {
+      none: 0,
       minimal: 0,
       low: 0,
+      medium: 0,
       moderate: 0,
       high: 0,
       critical: 0,
@@ -290,14 +301,16 @@ export class ChangeClassifier {
     const parts: string[] = [];
 
     // Base description
+    const typeStr = (change.changeType || 'modified') as string;
     parts.push(
-      `${change.changeType.charAt(0).toUpperCase() + change.changeType.slice(1)} ${
+      `${typeStr.charAt(0).toUpperCase() + typeStr.slice(1)} ${
         change.nodeType
       } "${change.nodeName}"`
     );
 
     // Entropy level
-    parts.push(`with ${entropy.level} entropy (${(entropy.normalizedEntropy * 100).toFixed(1)}%)`);
+    const level = entropy.level || 'minimal';
+    parts.push(`with ${level} entropy (${(entropy.normalizedEntropy * 100).toFixed(1)}%)`);
 
     // Matching rules
     if (matchingRules.length > 0) {

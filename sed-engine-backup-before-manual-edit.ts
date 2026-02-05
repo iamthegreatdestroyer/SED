@@ -13,15 +13,8 @@ import type {
   SemanticDiff,
   EntropyThresholds,
   SupportedLanguage,
-  SemanticChange,
-  DiffChange,
-  DiffStats,
-  NodeEntropy,
-  EntropyHotspot,
-  FileDiff,
 } from '@sed/shared/types';
 import { DEFAULT_ENTROPY_THRESHOLDS } from '@sed/shared/types';
-import { createSourcePosition } from '../utils/helpers.js';
 
 import { SemanticParser } from '../semantic/parser.js';
 import { MerkleTreeBuilder } from '../semantic/merkle-tree.js';
@@ -150,12 +143,7 @@ export class SEDEngine {
     const newTreeResult = this.merkleBuilder.build(newNodes);
 
     // Compute diff using the roots
-    const diff = this.computeDiff(
-      oldTreeResult.roots,
-      newTreeResult.roots,
-      input.language,
-      input.filePath
-    );
+    const diff = this.computeDiff(oldTreeResult.roots, newTreeResult.roots);
 
     // Categorize changes
     const changes = this.categorizeChanges(oldTreeResult.roots, newTreeResult.roots, diff);
@@ -168,50 +156,28 @@ export class SEDEngine {
     );
 
     // Classify changes
-    const entropyMap = new Map(analysis.nodeEntropies.map((e: NodeEntropy) => [e.nodeId, e]));
-    const mutableChanges: DiffChange[] = [...diff.changes];
-    const classifications = this.changeClassifier.classifyBatch(mutableChanges, entropyMap);
+    const entropyMap = new Map(analysis.nodeEntropies.map((e) => [e.nodeId, e]));
+    const classifications = this.changeClassifier.classifyBatch(diff.changes, entropyMap);
 
     // Generate summary
     const classificationSummary = this.changeClassifier.generateSummary(classifications);
 
     const processingTime = performance.now() - startTime;
 
-    // Create DiffStats
-    const diffStats: DiffStats = {
-      additions: diff.summary?.added ?? 0,
-      deletions: diff.summary?.removed ?? 0,
-      modifications: diff.summary?.modified ?? 0,
-      moves: 0, // Not tracked yet
-      renames: 0, // Not tracked yet
-      totalChanges: diff.summary?.totalChanges ?? 0,
-      entropyScore: analysis.totalEntropy,
-      entropyLevel: analysis.level,
-    };
-
     return {
-      files: [diff], // Main property - array of FileDiff
-      summary: {
-        totalFiles: 1,
-        totalChanges: diff.summary?.totalChanges ?? 0,
-        overallEntropy: analysis,
-        hotspots: analysis.hotspots.map((h: EntropyHotspot) => h.nodeId),
-        stats: diffStats,
-        riskLevel: analysis.level,
-        processingTime,
-      },
-      metadata: {
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        computeTime: processingTime,
-        algorithm: 'sed-v1',
-        oldFile: input.filePath ?? 'unknown',
-        newFile: input.filePath ?? 'unknown',
-      },
-      // Legacy properties for backward compatibility
       diff,
       analysis,
       classifications,
+      summary: {
+        ...classificationSummary,
+        processingTime,
+      },
+      metadata: {
+        oldFile: input.filePath ?? 'unknown',
+        newFile: input.filePath ?? 'unknown',
+        language: input.language,
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 
@@ -282,17 +248,8 @@ export class SEDEngine {
       language,
     });
 
-    // Guard against undefined analysis
-    if (!result.analysis) {
-      return {
-        level: 'none',
-        score: 0,
-        recommendation: 'No analysis available',
-      };
-    }
-
     let recommendation: string;
-    switch (result.analysis!.level) {
+    switch (result.analysis.level) {
       case 'critical':
         recommendation = 'Split into smaller changes. Mandatory review.';
         break;
@@ -310,8 +267,8 @@ export class SEDEngine {
     }
 
     return {
-      level: result.analysis!.level,
-      score: result.analysis!.normalizedEntropy,
+      level: result.analysis.level,
+      score: result.analysis.normalizedEntropy,
       recommendation,
     };
   }
@@ -328,28 +285,15 @@ export class SEDEngine {
     level: string;
     reviewRequired: boolean;
   } {
-    // Guard against undefined properties
-    if (!result.analysis || !result.diff || !result.classifications) {
-      return {
-        entropy: 0,
-        complexity: 0,
-        hotspotCount: 0,
-        changeCount: 0,
-        riskScore: 0,
-        level: 'none',
-        reviewRequired: false,
-      };
-    }
-
-    const reviewRequired = result.classifications!.some((c) => c['reviewRequired']);
+    const reviewRequired = result.classifications.some((c) => c.reviewRequired);
 
     return {
-      entropy: result.analysis!.totalEntropy,
-      complexity: this.calculateComplexityFromDiff(result.diff!),
-      hotspotCount: result.analysis!.hotspots.length,
-      changeCount: result.diff!.summary?.totalChanges ?? 0,
-      riskScore: result.summary?.averageRiskScore ?? 0,
-      level: result.analysis!.level,
+      entropy: result.analysis.totalEntropy,
+      complexity: this.calculateComplexityFromDiff(result.diff),
+      hotspotCount: result.analysis.hotspots.length,
+      changeCount: result.diff.summary.totalChanges,
+      riskScore: result.summary.averageRiskScore,
+      level: result.analysis.level,
       reviewRequired,
     };
   }
@@ -371,17 +315,12 @@ export class SEDEngine {
   /**
    * Compute semantic diff between Merkle trees
    */
-  private computeDiff(
-    oldTrees: MerkleNode[],
-    newTrees: MerkleNode[],
-    language: SupportedLanguage = 'typescript',
-    filePath: string = 'unknown'
-  ): FileDiff {
+  private computeDiff(oldTrees: MerkleNode[], newTrees: MerkleNode[]): SemanticDiff {
     // Convert back to semantic nodes for diff processor
     const oldNodes = this.extractSemanticNodes(oldTrees);
     const newNodes = this.extractSemanticNodes(newTrees);
 
-    return this.diffProcessor.diff(oldNodes, newNodes, language, filePath);
+    return this.diffProcessor.diff(oldNodes, newNodes);
   }
 
   /**
@@ -399,16 +338,8 @@ export class SEDEngine {
       id: merkle.id,
       type: merkle.type,
       name: merkle.name,
-      range: {
-        start: createSourcePosition(merkle.startLine ?? 0, 0),
-        end: createSourcePosition(merkle.endLine ?? 0, 0),
-      },
-      children: merkle.children.map((c: MerkleNode) => this.merkleToSemantic(c)),
-      hash: merkle.merkleHash,
-      metadata: {},
-      contentHash: merkle.merkleHash,
-      startLine: merkle.startLine ?? 0,
-      endLine: merkle.endLine ?? 0,
+      range: { start: 0, end: 0 }, // Range lost in Merkle conversion
+      children: merkle.children.map((c) => this.merkleToSemantic(c)),
     };
   }
 
@@ -513,9 +444,6 @@ export class SEDEngine {
    */
   private calculateComplexityFromDiff(diff: SemanticDiff): number {
     // Simple heuristic based on change count and types
-    if (!diff.summary) {
-      return 0;
-    }
     const { added, removed, modified } = diff.summary;
 
     return (

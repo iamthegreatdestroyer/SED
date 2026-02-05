@@ -9,11 +9,12 @@ import type { SupportedLanguage, SemanticNode, SemanticNodeType } from '@sed/sha
 import { generateId, contentHash } from '@sed/shared/utils';
 
 import { LanguageRegistry } from './language-registry.js';
+import { createSourceRange } from '../utils/helpers.js';
 
 /**
  * Tree-sitter node interface (simplified for typing)
  */
-interface TSNode {
+export interface TSNode {
   type: string;
   text: string;
   startPosition: { row: number; column: number };
@@ -176,20 +177,20 @@ export class ASTWalker {
       name,
       startLine,
       endLine,
-      startColumn: tsNode.startPosition.column,
-      endColumn: tsNode.endPosition.column,
-      range: {
-        start: tsNode.startIndex,
-        end: tsNode.endIndex,
-      },
+      range: createSourceRange(
+        startLine,
+        tsNode.startPosition.column,
+        endLine,
+        tsNode.endPosition.column,
+        tsNode.startIndex,
+        tsNode.endIndex
+      ),
       contentHash: contentHash(tsNode.text),
       children: [],
+      hash: '', // Will be computed by merkle tree
       metadata: {
         language: context.language,
         scope: [...context.scopeStack],
-        depth: context.depth,
-        rawType: tsNode.type,
-        hasError: tsNode.hasError,
       },
     };
   }

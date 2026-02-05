@@ -109,17 +109,44 @@ export class EntropyCalculator {
     const changeType = this.determineChangeType(oldNode, newNode);
     const result = this.computeChangeEntropy(oldNode, newNode, changeType);
 
+    // Determine entropy change type from semantic/structural split
+    const entropyChangeType:
+      | 'structural'
+      | 'semantic'
+      | 'added'
+      | 'removed'
+      | 'modified'
+      | 'unchanged'
+      | 'multiple' =
+      result.structuralEntropy > 0 && result.semanticEntropy > 0
+        ? 'multiple'
+        : result.structuralEntropy > result.semanticEntropy
+          ? 'structural'
+          : result.semanticEntropy > 0
+            ? 'semantic'
+            : changeType === 'added'
+              ? 'added'
+              : changeType === 'removed'
+                ? 'removed'
+                : changeType === 'modified'
+                  ? 'modified'
+                  : 'unchanged';
+
     return {
       nodeId: node.id,
       nodeName: node.name,
       nodeType: node.type,
+      shannon: result.combinedScore,
+      conditional: result.semanticEntropy,
+      relative: result.normalizedScore,
       entropy: result.combinedScore,
       normalizedEntropy: result.normalizedScore,
       level: result.level,
+      type: entropyChangeType,
       components: {
         structural: result.structuralEntropy,
         semantic: result.semanticEntropy,
-        propagation: result.propagationFactor,
+        syntactic: 0,
       },
       changeType,
     };

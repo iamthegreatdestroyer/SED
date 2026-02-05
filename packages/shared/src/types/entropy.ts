@@ -14,7 +14,7 @@
 /**
  * Entropy change classification levels
  */
-export type EntropyLevel = 'minimal' | 'low' | 'moderate' | 'high' | 'critical';
+export type EntropyLevel = 'none' | 'minimal' | 'low' | 'medium' | 'moderate' | 'high' | 'critical';
 
 /**
  * Types of entropy changes
@@ -22,6 +22,12 @@ export type EntropyLevel = 'minimal' | 'low' | 'moderate' | 'high' | 'critical';
 export type EntropyChangeType =
   | 'structural' // Changes to code structure (blocks, nesting)
   | 'semantic' // Changes to meaning (function logic, types)
+  | 'added' // Node was added
+  | 'removed' // Node was removed
+  | 'modified' // Node was modified
+  | 'unchanged' // Node unchanged (for baseline)
+  | 'none' // No specific change type
+  | 'multiple' // Multiple change types
   | 'syntactic' // Surface-level changes (formatting, names)
   | 'propagation' // Changes that affect other parts of codebase
   | 'mixed'; // Combination of multiple types
@@ -36,6 +42,17 @@ export interface NodeEntropy {
   readonly relative: number; // Relative to baseline (0-1)
   readonly level: EntropyLevel; // Classified level
   readonly type: EntropyChangeType; // Type of change
+  // Legacy/convenience properties
+  readonly entropy: number; // Alias for shannon
+  readonly normalizedEntropy: number; // Alias for relative
+  readonly nodeName: string; // Node identifier
+  readonly nodeType: string; // Semantic type
+  readonly changeType: EntropyChangeType; // Type classification
+  readonly components: {
+    readonly structural: number;
+    readonly semantic: number;
+    readonly syntactic: number;
+  };
 }
 
 /**
@@ -50,6 +67,32 @@ export interface EntropyAnalysis {
   readonly level: EntropyLevel;
   readonly nodeEntropies: readonly NodeEntropy[];
   readonly hotspots: readonly EntropyHotspot[];
+  // Legacy/convenience properties
+  readonly entropy: number; // Alias for totalEntropy
+  readonly normalizedEntropy: number; // Normalized total (0-1)
+  readonly components: {
+    readonly structural: number;
+    readonly semantic: number;
+    readonly syntactic: number;
+    readonly propagation?: number; // Legacy property
+  };
+  readonly metadata: {
+    readonly algorithm: string;
+    readonly version: string;
+    readonly computeTime: number;
+    readonly analysisTime?: number; // Legacy property - time spent analyzing
+    readonly totalChanges?: number; // Legacy property
+    readonly totalAffected?: number; // Legacy property
+    readonly addedCount?: number; // Legacy property
+    readonly removedCount?: number; // Legacy property
+    readonly modifiedCount?: number; // Legacy property
+    readonly nodeType?: string; // Legacy property
+    readonly changeType?: string; // Legacy property - type of change
+  };
+  // Additional legacy properties
+  readonly minimal?: number;
+  readonly impactLevel?: string;
+  readonly cascading?: boolean;
 }
 
 /**
@@ -61,6 +104,15 @@ export interface EntropyHotspot {
   readonly reason: string;
   readonly suggestedReview: boolean;
   readonly affectedNodes: readonly string[];
+  // Legacy properties for backward compatibility
+  readonly node?: string;
+  readonly path?: string;
+  readonly level?: EntropyLevel;
+  readonly contributors?: readonly string[];
+  readonly propagationImpact?: number;
+  readonly nodeName?: string;
+  readonly nodeType?: string;
+  readonly normalizedEntropy?: number;
 }
 
 /**

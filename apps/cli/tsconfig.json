@@ -1,5 +1,5 @@
 {
-  "extends": "@sed/config/tsconfig.node.json",
+  "extends": "../../packages/config/tsconfig.node.json",
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist",

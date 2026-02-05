@@ -16,7 +16,8 @@ export type SupportedLanguage =
   | 'go'
   | 'java'
   | 'c'
-  | 'cpp';
+  | 'cpp'
+  | 'csharp';
 
 /**
  * Types of semantic nodes in the AST
@@ -35,6 +36,8 @@ export type SemanticNodeType =
   | 'statement'
   | 'expression'
   | 'comment'
+  | 'module'
+  | 'other'
   | 'unknown';
 
 /**
@@ -65,6 +68,10 @@ export interface SemanticNode {
   readonly children: readonly SemanticNode[];
   readonly hash: string;
   readonly metadata: SemanticMetadata;
+  // Legacy/convenience properties
+  readonly contentHash: string; // Content-based hash
+  readonly startLine: number; // range.start.line
+  readonly endLine: number; // range.end.line
 }
 
 /**
@@ -80,6 +87,8 @@ export interface SemanticMetadata {
   readonly docstring?: string;
   readonly decorators?: readonly string[];
   readonly complexity?: number;
+  readonly language?: SupportedLanguage;
+  readonly scope?: string[]; // Legacy property for backward compatibility
 }
 
 /**
@@ -102,6 +111,14 @@ export interface MerkleNode {
   readonly children: readonly MerkleNode[];
   readonly structuralHash: string;
   readonly contentHash: string;
+  // Legacy/convenience properties for compatibility
+  readonly merkleHash: string; // Alias for hash
+  readonly id: string; // From semanticNode.id
+  readonly name: string; // From semanticNode.name
+  readonly type: SemanticNodeType; // From semanticNode.type
+  readonly depth: number; // Tree depth
+  readonly startLine: number; // From semanticNode.range.start.line
+  readonly endLine: number; // From semanticNode.range.end.line
 }
 
 /**
@@ -114,6 +131,9 @@ export interface SemanticParseResult {
   readonly nodeCount: number;
   readonly parseTime: number;
   readonly errors: readonly ParseError[];
+  readonly metadata: {
+    readonly parseTime: number; // Duplicate for compatibility
+  };
 }
 
 /**

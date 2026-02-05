@@ -97,6 +97,7 @@ export interface ParserOptions {
   readonly timeout?: number;
   readonly includeComments?: boolean;
   readonly customPatterns?: readonly string[];
+  readonly maxDepth?: number;
 }
 
 /**

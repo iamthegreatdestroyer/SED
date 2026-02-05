@@ -10,12 +10,10 @@ import type {
   SemanticNode,
   SemanticParseResult,
   ParserOptions,
-  ParseError,
-  MerkleNode,
 } from '@sed/shared/types';
 import { detectLanguage, generateId } from '@sed/shared/utils';
 
-import { ASTWalker, type TSNode } from './ast-walker.js';
+import { ASTWalker } from './ast-walker.js';
 import { LanguageRegistry } from './language-registry.js';
 
 /**
@@ -25,7 +23,7 @@ const DEFAULT_OPTIONS: Required<ParserOptions> = {
   includeComments: false,
   maxDepth: 50,
   timeout: 5000,
-  maxFileSize: 10 * 1024 * 1024, // 10MB
+  maxFileSize: 10 * 1024 * 1024,
   customPatterns: [],
 };
 
@@ -50,7 +48,18 @@ export class SemanticParser {
     source: string,
     language: SupportedLanguage,
     options: ParserOptions & { filePath?: string } = {}
-  ): Promise<SemanticParseResult> {
+  ): Promise<{
+    filePath: string;
+    language: SupportedLanguage;
+    nodes: SemanticNode[];
+    parseTime: number;
+    errors: string[];
+    metadata: {
+      totalNodes: number;
+      maxDepth: number;
+      hasErrors: boolean;
+    };
+  }> {
     const startTime = performance.now();
     const resolvedLanguage = language;
     const resolvedOptions = { ...DEFAULT_OPTIONS, ...options };
@@ -76,48 +85,24 @@ export class SemanticParser {
       }
 
       // Walk AST and extract semantic nodes
-      const rootNode = tree.rootNode as unknown as {
-        type: string;
-        text: string;
-        hasError?: boolean;
-        [key: string]: unknown;
-      };
-      const nodes = this.walker.walk(rootNode as TSNode, resolvedLanguage, source, filePath, {
+      const nodes = this.walker.walk(tree.rootNode as TSNode, resolvedLanguage, source, filePath, {
         maxDepth: resolvedOptions.maxDepth,
         includeAnonymous: false,
       });
 
       // Build hierarchy
       const rootNodes = this.buildHierarchy(nodes);
-      const parseTime = performance.now() - startTime;
-      const hasErrors: boolean = rootNode.hasError === true;
-      const root = rootNodes[0] || this.createEmptyNode(filePath);
 
-      // Build merkle root
-      const merkleRoot: MerkleNode = {
-        hash: root.hash || '',
-        semanticNode: root,
-        children: [],
-        structuralHash: root.hash || '',
-        contentHash: root.contentHash || '',
-        merkleHash: root.hash || '',
-        id: root.id,
-        name: root.name,
-        type: root.type,
-        depth: 0,
-        startLine: root.startLine,
-        endLine: root.endLine,
-      };
+      const parseTime = performance.now() - startTime;
 
       return {
-        language: resolvedLanguage,
-        root,
-        merkleRoot,
-        nodeCount: nodes.length,
-        parseTime,
-        errors: hasErrors ? this.extractErrors(rootNode) : [],
+        filePath,
+        nodes: rootNodes,
+        errors: tree.rootNode.hasError ? this.extractErrors(tree.rootNode) : [],
         metadata: {
-          parseTime,
+          totalNodes: nodes.length,
+          maxDepth: this.calculateMaxDepth(rootNodes),
+          hasErrors: tree.rootNode.hasError,
         },
       };
     } catch (error) {
@@ -133,13 +118,12 @@ export class SemanticParser {
   async parseMany(
     files: Array<{ source: string; language: SupportedLanguage; filePath?: string }>,
     options: ParserOptions = {}
-  ): Promise<SemanticParseResult[]> {
-    const results = await Promise.all(
+  ): Promise<SemanticNode[][]> {
+    return Promise.all(
       files.map((file) =>
         this.parse(file.source, file.language, { ...options, filePath: file.filePath })
       )
     );
-    return results;
   }
 
   /**
@@ -149,7 +133,7 @@ export class SemanticParser {
     try {
       await this.initializeParser(language);
       const tree = await this.parseSource(source, 1000);
-      return !!(tree?.rootNode && !(tree.rootNode as { hasError?: boolean }).hasError);
+      return tree?.rootNode && !tree.rootNode.hasError;
     } catch {
       return false;
     }
@@ -159,7 +143,7 @@ export class SemanticParser {
    * Get list of all supported languages
    */
   getSupportedLanguages(): SupportedLanguage[] {
-    return [...this.registry.getSupportedLanguages()];
+    return this.registry.getSupportedLanguages();
   }
 
   /**
@@ -174,28 +158,22 @@ export class SemanticParser {
    */
   private detectLanguage(filePath: string): SupportedLanguage | null {
     const detected = detectLanguage(filePath);
-    if (!detected || typeof detected !== 'string') {
-      return null;
-    }
-    return this.registry.isSupported(detected as SupportedLanguage)
-      ? (detected as SupportedLanguage)
-      : null;
+    return this.registry.isSupported(detected) ? detected : null;
   }
 
   /**
    * Get default file name for a language (for cases where filePath not provided)
    */
   private getDefaultFileName(language: SupportedLanguage): string {
-    const extensions: Partial<Record<SupportedLanguage, string>> = {
+    const extensions: Record<SupportedLanguage, string> = {
       typescript: 'file.ts',
       javascript: 'file.js',
       python: 'file.py',
       go: 'file.go',
       rust: 'file.rs',
       java: 'File.java',
-      c: 'file.c',
-      cpp: 'file.cpp',
       csharp: 'File.cs',
+      cpp: 'file.cpp',
     };
     return extensions[language] ?? 'file.txt';
   }
@@ -230,9 +208,7 @@ export class SemanticParser {
   private async parseSource(
     source: string,
     timeout: number
-  ): Promise<{
-    rootNode: { hasError?: boolean; children?: unknown[]; type?: string; [key: string]: unknown };
-  } | null> {
+  ): Promise<{ rootNode: { hasError: boolean; children: unknown[]; type: string } } | null> {
     if (!this.parser) {
       throw new Error('Parser not initialized');
     }
@@ -245,16 +221,7 @@ export class SemanticParser {
       try {
         const tree = (this.parser as { parse: (source: string) => unknown }).parse(source);
         clearTimeout(timer);
-        resolve(
-          tree as {
-            rootNode: {
-              hasError?: boolean;
-              children?: unknown[];
-              type?: string;
-              [key: string]: unknown;
-            };
-          }
-        );
+        resolve(tree as { rootNode: { hasError: boolean; children: unknown[]; type: string } });
       } catch (error) {
         clearTimeout(timer);
         reject(error);
@@ -285,12 +252,7 @@ export class SemanticParser {
       } else {
         // Add as child to the top of the stack
         const parent = stack[stack.length - 1]!;
-        if (!parent.children) {
-          (parent as { children: SemanticNode[] }).children = [];
-        }
-        const mutableChildren = [...parent.children];
-        mutableChildren.push(node);
-        (parent as { children: SemanticNode[] }).children = mutableChildren;
+        parent.children.push(node);
       }
 
       // Push this node to the stack (it might be a parent)
@@ -314,8 +276,8 @@ export class SemanticParser {
   /**
    * Extract parse errors from tree
    */
-  private extractErrors(rootNode: { children: unknown[]; type: string }): ParseError[] {
-    const errors: ParseError[] = [];
+  private extractErrors(rootNode: { children: unknown[]; type: string }): string[] {
+    const errors: string[] = [];
 
     const walk = (node: {
       children?: unknown[];
@@ -325,16 +287,9 @@ export class SemanticParser {
     }): void => {
       if (node.type === 'ERROR' || node.isMissing) {
         const pos = node.startPosition;
-        const line = (pos?.row ?? 0) + 1;
-        const column = pos?.column ?? 0;
-        errors.push({
-          message: `Parse error: ${node.type}`,
-          range: {
-            start: { line, column, offset: 0 },
-            end: { line, column, offset: 0 },
-          },
-          severity: 'error',
-        });
+        errors.push(
+          `Parse error at line ${(pos?.row ?? 0) + 1}, column ${pos?.column ?? 0}: ${node.type}`
+        );
       }
 
       if (node.children) {
@@ -349,27 +304,6 @@ export class SemanticParser {
   }
 
   /**
-   * Create empty semantic node for cases where parsing produces no nodes
-   */
-  private createEmptyNode(filePath: string): SemanticNode {
-    return {
-      id: generateId(),
-      type: 'module',
-      name: filePath,
-      range: {
-        start: { line: 0, column: 0, offset: 0 },
-        end: { line: 0, column: 0, offset: 0 },
-      },
-      children: [],
-      hash: '',
-      metadata: {},
-      contentHash: '',
-      startLine: 0,
-      endLine: 0,
-    };
-  }
-
-  /**
    * Calculate maximum depth of node hierarchy
    */
   private calculateMaxDepth(nodes: SemanticNode[], depth = 0): number {
@@ -379,7 +313,7 @@ export class SemanticParser {
 
     let maxDepth = depth;
     for (const node of nodes) {
-      const childDepth = this.calculateMaxDepth([...node.children], depth + 1);
+      const childDepth = this.calculateMaxDepth(node.children, depth + 1);
       if (childDepth > maxDepth) {
         maxDepth = childDepth;
       }

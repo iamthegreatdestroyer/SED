@@ -10,8 +10,17 @@ import type {
   NodeEntropy,
   Change,
   PropagationPath as TestPropagationPath,
-  PropagationImpact,
 } from '@sed/shared/types';
+
+/**
+ * Impact analysis result for change propagation
+ */
+interface PropagationImpact {
+  readonly totalAffected: number;
+  readonly propagationDepth: number;
+  readonly impactLevel: 'low' | 'medium' | 'high' | 'critical';
+  readonly cascading: boolean;
+}
 
 /**
  * Propagation path describing how a change propagates through the tree
@@ -170,7 +179,9 @@ export class PropagationTracker {
 
     // Track all affected nodes
     for (const change of changes) {
-      affectedSet.add(change.nodeId);
+      if (change.nodeId !== undefined) {
+        affectedSet.add(change.nodeId);
+      }
       if (change.depth !== undefined) {
         maxDepth = Math.max(maxDepth, change.depth);
       }
@@ -222,6 +233,11 @@ export class PropagationTracker {
 
     const impact = this.analyzePropagation(changes);
 
+    // Guard against undefined impactLevel
+    if (!impact.impactLevel) {
+      return 0;
+    }
+
     // Normalize to 0-1 scale based on impact level and affected count
     const baseScore = impact.totalAffected / 100; // Scale by 100 nodes
     const levelMultiplier = {
@@ -250,14 +266,17 @@ export class PropagationTracker {
 
     // Build graph from change relationships
     for (const change of changes) {
+      if (change.nodeId === undefined) continue;
+
       nodes.add(change.nodeId);
 
       // Infer edges from depth relationships
-      if (change.depth === 0) {
+      if (change.depth === 0 || change.depth === undefined) {
         // Root level - no parent
       } else {
         // Try to find parent by matching name patterns
         for (const other of changes) {
+          if (other.nodeId === undefined) continue;
           if (other.depth === change.depth - 1 && change.nodeId.startsWith(other.nodeId)) {
             edges.push({ from: other.nodeId, to: change.nodeId });
             childNodes.add(change.nodeId);
@@ -384,6 +403,12 @@ export class PropagationTracker {
       return paths;
     }
 
+    // Guard against undefined nodeIds
+    if (source.nodeId === undefined) {
+      this.storedPaths = [];
+      return paths;
+    }
+
     // Build dependency graph from Change objects for getAffectedNodes compatibility
     if (!this.dependencyGraph.has(source.nodeId)) {
       this.dependencyGraph.set(source.nodeId, new Set());
@@ -394,6 +419,9 @@ export class PropagationTracker {
 
     // Create propagation paths from source to each affected node
     for (const target of affected) {
+      // Skip targets without nodeId
+      if (target.nodeId === undefined) continue;
+
       // source -> target dependency (source affects target)
       this.dependencyGraph.get(source.nodeId)!.add(target.nodeId);
 
@@ -426,10 +454,35 @@ export class PropagationTracker {
       }
 
       const path: TestPropagationPath = {
+        id: `${source.nodeId}->${target.nodeId}`,
+        name: `Propagation: ${source.nodeId} -> ${target.nodeId}`,
+        type: propagationType,
+        changes: [source, target],
+        combinedEntropy: {
+          totalEntropy: 0,
+          structuralEntropy: 0,
+          semanticEntropy: 0,
+          propagationFactor: 0,
+          changeScore: 0,
+          level: 'low',
+          nodeEntropies: [],
+          hotspots: [],
+          entropy: 0,
+          normalizedEntropy: 0,
+          components: {
+            structural: 0,
+            semantic: 0,
+            syntactic: 0,
+          },
+          metadata: {
+            algorithm: 'propagation-tracker',
+            version: '1.0.0',
+            computeTime: 0,
+          },
+        },
+        level: 'low',
         source: source.nodeId,
         targets: [target.nodeId],
-        depth: estimatedDepth,
-        propagationType,
       };
 
       paths.push(path);
@@ -484,7 +537,7 @@ export class PropagationTracker {
    */
   private tracePropagation(sourceId: string, initialImpact: number): PropagationResult {
     const affectedNodes = new Map<string, number>();
-    const paths: PropagationPath[] = [];
+    const paths: PropagationPathInternal[] = [];
     let maxDistance = 0;
     let totalImpact = initialImpact;
 

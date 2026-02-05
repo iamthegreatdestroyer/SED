@@ -66,6 +66,9 @@ export { SemanticParser } from './semantic/parser.js';
 export { MerkleTreeBuilder } from './semantic/merkle-tree.js';
 export { ASTWalker } from './semantic/ast-walker.js';
 
+// Helper exports
+export { createSourcePosition, createSourceRange, createEntropyHotspot } from './utils/helpers.js';
+
 export { EntropyCalculator } from './entropy/entropy-calculator.js';
 export { EntropyAnalyzer } from './entropy/entropy-analyzer.js';
 export { PropagationTracker } from './entropy/propagation-tracker.js';

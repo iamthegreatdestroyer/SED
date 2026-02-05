@@ -120,19 +120,24 @@ export class EntropyAnalyzer {
     if (nodeEntropies.length === 0) {
       return {
         totalEntropy: 0,
+        structuralEntropy: 0,
+        semanticEntropy: 0,
+        propagationFactor: 1.0,
+        changeScore: 0,
+        entropy: 0,
         normalizedEntropy: 0,
         level: 'minimal',
         nodeEntropies: [],
         hotspots: [],
-        distribution: {
-          minimal: 0,
-          low: 0,
-          moderate: 0,
-          high: 0,
-          critical: 0,
+        components: {
+          structural: 0,
+          semantic: 0,
+          syntactic: 0,
         },
-        averageEntropy: 0,
         metadata: {
+          algorithm: 'entropy-analyzer-v1',
+          version: '1.0.0',
+          computeTime: performance.now() - startTime,
           totalChanges: 0,
           addedCount: 0,
           removedCount: 0,
@@ -159,7 +164,7 @@ export class EntropyAnalyzer {
     // Determine overall level - use provided level if single node, otherwise calculate
     const overallLevel =
       nodeEntropies.length === 1
-        ? nodeEntropies[0].level
+        ? (nodeEntropies[0]?.level ?? 'minimal')
         : this.determineOverallLevel(totalEntropy, nodeEntropies);
 
     const analysisTime = performance.now() - startTime;
@@ -171,13 +176,24 @@ export class EntropyAnalyzer {
 
     return {
       totalEntropy,
+      structuralEntropy: totalEntropy * 0.4, // Approximate structural component
+      semanticEntropy: totalEntropy * 0.6, // Approximate semantic component
+      propagationFactor: 1.0,
+      changeScore: totalEntropy,
+      entropy: totalEntropy,
       normalizedEntropy: averageEntropy,
       level: overallLevel,
       nodeEntropies,
       hotspots,
-      distribution,
-      averageEntropy,
+      components: {
+        structural: totalEntropy * 0.4,
+        semantic: totalEntropy * 0.6,
+        syntactic: 0,
+      },
       metadata: {
+        algorithm: 'entropy-analyzer-v1',
+        version: '1.0.0',
+        computeTime: analysisTime,
         totalChanges: nodeEntropies.length,
         addedCount,
         removedCount,
@@ -248,12 +264,24 @@ export class EntropyAnalyzer {
 
     return {
       totalEntropy,
+      structuralEntropy: totalEntropy * 0.4,
+      semanticEntropy: totalEntropy * 0.6,
+      propagationFactor: 1.0,
+      changeScore: totalEntropy,
+      entropy: totalEntropy,
       normalizedEntropy: totalEntropy / Math.max(1, nodeEntropies.length),
       level: overallLevel,
       nodeEntropies,
       hotspots,
-      distribution,
+      components: {
+        structural: totalEntropy * 0.4,
+        semantic: totalEntropy * 0.6,
+        syntactic: 0,
+      },
       metadata: {
+        algorithm: 'entropy-analyzer-v1',
+        version: '1.0.0',
+        computeTime: analysisTime,
         totalChanges: nodeEntropies.length,
         addedCount: changes.added.length,
         removedCount: changes.removed.length,
@@ -289,23 +317,27 @@ export class EntropyAnalyzer {
     // Convert to hotspots
     return topN.map((node, index) => ({
       nodeId: node.nodeId,
+      entropy: node.entropy,
+      reason: this.getHotspotRecommendation(node),
+      suggestedReview: node.entropy > 0.7 || node.level === 'high' || node.level === 'critical',
+      affectedNodes: [], // Will be populated by propagation tracker if enabled
+      // Legacy properties for backward compatibility
       nodeName: node.nodeName,
       nodeType: node.nodeType,
-      entropy: node.entropy,
       normalizedEntropy: node.normalizedEntropy,
       level: node.level,
-      rank: index + 1,
-      recommendation: this.getHotspotRecommendation(node),
     }));
   }
 
   /**
    * Calculate distribution of entropy levels (public method)
    */
-  calculateDistribution(nodeEntropies: NodeEntropy[]): EntropyDistribution {
-    const distribution: EntropyDistribution = {
+  calculateDistribution(nodeEntropies: NodeEntropy[]): Record<EntropyLevel, number> {
+    const distribution: Record<EntropyLevel, number> = {
+      none: 0,
       minimal: 0,
       low: 0,
+      medium: 0,
       moderate: 0,
       high: 0,
       critical: 0,
@@ -349,23 +381,29 @@ export class EntropyAnalyzer {
   } {
     const entropyDelta = analysis2.totalEntropy - analysis1.totalEntropy;
 
-    const hotspot1Names = new Set(analysis1.hotspots.map((h) => h.nodeName));
-    const hotspot2Names = new Set(analysis2.hotspots.map((h) => h.nodeName));
+    const hotspot1Names = new Set(analysis1.hotspots.map((h: EntropyHotspot) => h.nodeName));
+    const hotspot2Names = new Set(analysis2.hotspots.map((h: EntropyHotspot) => h.nodeName));
 
-    const newHotspots = analysis2.hotspots.filter((h) => !hotspot1Names.has(h.nodeName));
-    const resolvedHotspots = analysis1.hotspots.filter((h) => !hotspot2Names.has(h.nodeName));
+    const newHotspots = analysis2.hotspots.filter(
+      (h: EntropyHotspot) => !hotspot1Names.has(h.nodeName)
+    );
+    const resolvedHotspots = analysis1.hotspots.filter(
+      (h: EntropyHotspot) => !hotspot2Names.has(h.nodeName)
+    );
 
     // Define entropy level ordering for comparison
     const levelOrder: Record<EntropyLevel, number> = {
-      minimal: 0,
-      low: 1,
-      moderate: 2,
-      high: 3,
-      critical: 4,
+      none: 0,
+      minimal: 1,
+      low: 2,
+      medium: 3,
+      moderate: 4,
+      high: 5,
+      critical: 6,
     };
 
-    const level1Order = levelOrder[analysis1.level];
-    const level2Order = levelOrder[analysis2.level];
+    const level1Order = levelOrder[analysis1.level] ?? 0;
+    const level2Order = levelOrder[analysis2.level] ?? 0;
 
     // Improved if entropy decreased or level decreased
     const improved = entropyDelta < 0 || level2Order < level1Order;
@@ -412,27 +450,27 @@ export class EntropyAnalyzer {
 
     // Check for concentrated changes
     const topHotspot = analysis.hotspots[0];
-    if (topHotspot && topHotspot.normalizedEntropy > 0.8) {
+    if (topHotspot && (topHotspot.normalizedEntropy ?? 0) > 0.8) {
       recommendations.push(
-        `🔥 High concentration in "${topHotspot.nodeName}" (${topHotspot.nodeType}). Consider refactoring.`
+        `🔥 High concentration in "${topHotspot.nodeName ?? 'unknown'}" (${topHotspot.nodeType ?? 'unknown'}). Consider refactoring.`
       );
     }
 
     // Check change type distribution
     const { addedCount, removedCount, modifiedCount } = analysis.metadata;
-    const totalChanges = addedCount + removedCount + modifiedCount;
+    const totalChanges = (addedCount ?? 0) + (removedCount ?? 0) + (modifiedCount ?? 0);
 
-    if (addedCount > totalChanges * 0.7) {
+    if ((addedCount ?? 0) > totalChanges * 0.7) {
       recommendations.push('➕ Mostly additions. Ensure new code follows existing patterns.');
     }
 
-    if (removedCount > totalChanges * 0.5) {
+    if ((removedCount ?? 0) > totalChanges * 0.5) {
       recommendations.push('➖ Significant removals. Verify no unintended functionality is lost.');
     }
 
-    // Check propagation
+    // Check propagation - identify high-entropy nodes that may have wide impact
     const highPropagation = analysis.nodeEntropies.filter(
-      (n) => n.components?.propagation && n.components.propagation > 2
+      (n: NodeEntropy) => n.level === 'high' || n.level === 'critical'
     );
     if (highPropagation.length > 0) {
       recommendations.push(
@@ -461,13 +499,15 @@ export class EntropyAnalyzer {
     // Convert to hotspots
     return topN.map((node, index) => ({
       nodeId: node.nodeId,
+      entropy: node.entropy,
+      reason: this.getHotspotRecommendation(node),
+      suggestedReview: node.entropy > 0.7 || node.level === 'high' || node.level === 'critical',
+      affectedNodes: [], // Will be populated by propagation tracker if enabled
+      // Legacy properties for backward compatibility
       nodeName: node.nodeName,
       nodeType: node.nodeType,
-      entropy: node.entropy,
       normalizedEntropy: node.normalizedEntropy,
       level: node.level,
-      rank: index + 1,
-      recommendation: this.getHotspotRecommendation(node),
     }));
   }
 
@@ -499,12 +539,12 @@ export class EntropyAnalyzer {
    */
   private determineOverallLevel(totalEntropy: number, nodeEntropies: NodeEntropy[]): EntropyLevel {
     // If any node is critical, overall is critical
-    if (nodeEntropies.some((n) => n.level === 'critical')) {
+    if (nodeEntropies.some((n: NodeEntropy) => n.level === 'critical')) {
       return 'critical';
     }
 
     // If multiple high entropy nodes, escalate
-    const highCount = nodeEntropies.filter((n) => n.level === 'high').length;
+    const highCount = nodeEntropies.filter((n: NodeEntropy) => n.level === 'high').length;
     if (highCount >= 3) {
       return 'critical';
     }
@@ -513,7 +553,7 @@ export class EntropyAnalyzer {
     }
 
     // Check moderate
-    const moderateCount = nodeEntropies.filter((n) => n.level === 'moderate').length;
+    const moderateCount = nodeEntropies.filter((n: NodeEntropy) => n.level === 'moderate').length;
     if (moderateCount >= 5) {
       return 'high';
     }
@@ -522,7 +562,7 @@ export class EntropyAnalyzer {
     }
 
     // Check low
-    const lowCount = nodeEntropies.filter((n) => n.level === 'low').length;
+    const lowCount = nodeEntropies.filter((n: NodeEntropy) => n.level === 'low').length;
     if (lowCount >= 3) {
       return 'low';
     }

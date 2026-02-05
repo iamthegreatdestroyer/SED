@@ -142,6 +142,24 @@ export const LANGUAGE_CONFIGS: Record<SupportedLanguage, LanguageConfig> = {
     scopeNodeTypes: ['translation_unit', 'compound_statement', 'namespace_body'],
     ignoreNodeTypes: ['comment', 'raw_string_literal', 'string_literal'],
   },
+  csharp: {
+    moduleName: 'tree-sitter-c-sharp',
+    exportName: 'c_sharp',
+    semanticNodeTypes: [
+      'class_declaration',
+      'method_declaration',
+      'interface_declaration',
+      'property_declaration',
+      'field_declaration',
+      'constructor_declaration',
+      'enum_declaration',
+      'struct_declaration',
+      'namespace_declaration',
+      'using_directive',
+    ],
+    scopeNodeTypes: ['compilation_unit', 'namespace_declaration', 'class_declaration', 'block'],
+    ignoreNodeTypes: ['comment', 'string_literal'],
+  },
 };
 
 /**

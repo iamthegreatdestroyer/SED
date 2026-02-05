@@ -25,6 +25,18 @@ export interface DiffChange {
   readonly afterNode?: SemanticNode;
   readonly entropy: EntropyAnalysis;
   readonly description: string;
+
+  // Legacy properties for backward compatibility
+  readonly nodeType?: string;
+  readonly nodeName?: string;
+  readonly changeType?: 'added' | 'removed' | 'modified' | 'unchanged';
+  readonly newNode?: SemanticNode;
+  readonly oldNode?: SemanticNode;
+  oldContent?: string; // Mutable for assignment after creation
+  newContent?: string; // Mutable for assignment after creation
+  modifications?: Array<{ type: string; description: string }>; // Mutable for assignment after creation
+  readonly nodeId?: string;
+  readonly depth?: number;
 }
 
 /**
@@ -37,6 +49,10 @@ export interface SemanticChangeGroup {
   readonly changes: readonly DiffChange[];
   readonly combinedEntropy: EntropyAnalysis;
   readonly level: EntropyLevel;
+
+  // Legacy properties for backward compatibility
+  readonly source?: string;
+  readonly targets?: readonly string[];
 }
 
 /**
@@ -49,6 +65,14 @@ export interface FileDiff {
   readonly groups: readonly SemanticChangeGroup[];
   readonly totalEntropy: EntropyAnalysis;
   readonly stats: DiffStats;
+
+  // Legacy property for backward compatibility
+  readonly summary?: {
+    readonly added: number;
+    readonly removed: number;
+    readonly modified: number;
+    readonly totalChanges: number;
+  };
 }
 
 /**
@@ -72,6 +96,11 @@ export interface SEDDiffResult {
   readonly files: readonly FileDiff[];
   readonly summary: DiffSummary;
   readonly metadata: DiffMetadata;
+
+  // Legacy properties for backward compatibility
+  readonly analysis?: EntropyAnalysis;
+  readonly diff?: FileDiff;
+  readonly classifications?: ReadonlyArray<{ change: DiffChange; [key: string]: any }>;
 }
 
 /**
@@ -84,6 +113,10 @@ export interface DiffSummary {
   readonly hotspots: readonly string[];
   readonly stats: DiffStats;
   readonly riskLevel: EntropyLevel;
+
+  // Legacy properties for backward compatibility
+  readonly processingTime?: number;
+  readonly averageRiskScore?: number;
 }
 
 /**
@@ -96,6 +129,10 @@ export interface DiffMetadata {
   readonly afterRef?: string;
   readonly computeTime: number;
   readonly algorithm: 'sed-v1';
+
+  // Legacy properties for backward compatibility
+  readonly oldFile?: string;
+  readonly newFile?: string;
 }
 
 /**

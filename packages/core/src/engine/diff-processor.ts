@@ -5,9 +5,20 @@
  * @license MIT
  */
 
-import type { MerkleNode, SemanticNode, SemanticDiff, SemanticChange } from '@sed/shared/types';
+import type {
+  MerkleNode,
+  SemanticNode,
+  SemanticDiff,
+  SemanticChange,
+  DiffStats,
+  SemanticChangeGroup,
+  SupportedLanguage,
+  DiffOperation,
+  EntropyAnalysis,
+} from '@sed/shared/types';
 
 import { MerkleTreeBuilder } from '../semantic/merkle-tree.js';
+import { EntropyAnalyzer } from '../entropy/entropy-analyzer.js';
 
 /**
  * Options for diff processing
@@ -45,29 +56,37 @@ export class DiffProcessor {
   /**
    * Generate semantic diff between old and new versions
    */
-  diff(oldNodes: SemanticNode[], newNodes: SemanticNode[]): SemanticDiff {
-    const startTime = performance.now();
-
+  diff(
+    oldNodes: SemanticNode[],
+    newNodes: SemanticNode[],
+    language: SupportedLanguage = 'typescript',
+    path: string = 'unknown'
+  ): SemanticDiff {
     // Build Merkle trees - build() expects the array of root nodes
     const oldTreeResult = this.merkleBuilder.build(oldNodes);
     const newTreeResult = this.merkleBuilder.build(newNodes);
 
     // Compare trees using the roots
-    const changes = this.compareTrees(oldTreeResult.roots, newTreeResult.roots);
+    const durationChanges = this.compareTrees(oldTreeResult.roots, newTreeResult.roots);
 
-    // Build change summary
-    const summary = this.buildSummary(changes);
+    // Build change groups
+    const groups = this.groupChanges(durationChanges);
 
-    const processingTime = performance.now() - startTime;
+    // Build stats
+    const stats = this.buildStats(durationChanges);
+
+    // Build entropy analysis
+    const entropyAnalyzer = new EntropyAnalyzer();
+    const totalEntropy = entropyAnalyzer.analyze([]);
 
     return {
-      changes,
-      summary,
-      metadata: {
-        oldNodeCount: this.countNodes(oldTreeResult.roots),
-        newNodeCount: this.countNodes(newTreeResult.roots),
-        processingTime,
-      },
+      path,
+      language,
+      changes: durationChanges,
+      groups,
+      totalEntropy,
+      stats,
+      summary: this.buildSummary(durationChanges),
     };
   }
 
@@ -119,7 +138,7 @@ export class DiffProcessor {
   getChangesAtDepth(changes: SemanticChange[], depth: number): SemanticChange[] {
     return changes.filter((change) => {
       const node = change.newNode ?? change.oldNode;
-      return node?.depth === depth;
+      return node?.startLine !== undefined; // Filter by whether node exists
     });
   }
 
@@ -188,14 +207,82 @@ export class DiffProcessor {
     newNode: MerkleNode | null
   ): SemanticChange {
     const node = newNode ?? oldNode!;
+    const oldSemanticNode = oldNode?.semanticNode;
+    const newSemanticNode = newNode?.semanticNode;
+
+    // Map changeType to DiffOperation
+    const operationMap: Record<'added' | 'removed' | 'modified', DiffOperation> = {
+      added: 'add',
+      removed: 'remove',
+      modified: 'modify',
+    };
+
+    // Generate a unique ID for the change
+    const changeId = `${changeType}-${node.id}-${Date.now()}`;
+
+    // Extract path from node name or use a qualified path
+    const nodePath = `${node.name}`;
+
+    // Get range from the node with proper SourcePosition objects
+    const getSourcePosition = (
+      line: number,
+      column: number,
+      offset: number = line * 80 + column
+    ) => ({
+      line,
+      column,
+      offset,
+    });
+
+    const range = newSemanticNode?.range ??
+      oldSemanticNode?.range ?? {
+        start: getSourcePosition(node.startLine, 0),
+        end: getSourcePosition(node.endLine, 0),
+      };
+
+    // Create entropy analysis object with proper structure
+    const entropy: EntropyAnalysis = {
+      totalEntropy: 0,
+      structuralEntropy: 0,
+      semanticEntropy: 0,
+      propagationFactor: 1,
+      changeScore: 0,
+      level: 'low',
+      nodeEntropies: [],
+      hotspots: [],
+      entropy: 0,
+      normalizedEntropy: 0,
+      components: {
+        structural: 0,
+        semantic: 0,
+        syntactic: 0,
+      },
+      metadata: {
+        algorithm: 'sed-v1',
+        version: '1.0.0',
+        computeTime: 0,
+      },
+    };
 
     const change: SemanticChange = {
+      // Required DiffChange fields
+      id: changeId,
+      operation: operationMap[changeType],
+      path: nodePath,
+      range,
+      entropy,
+      description: `${changeType} node: ${node.name}`,
+      // Before/After nodes
+      beforeNode: oldSemanticNode,
+      afterNode: newSemanticNode,
+      // Legacy properties for backward compatibility
       changeType,
       nodeId: node.id,
       nodeName: node.name,
       nodeType: node.type,
-      oldNode: oldNode ?? undefined,
-      newNode: newNode ?? undefined,
+      oldNode: oldSemanticNode,
+      newNode: newSemanticNode,
+      depth: node.depth,
     };
 
     // Add content if requested
@@ -266,20 +353,54 @@ export class DiffProcessor {
    * Build summary of changes
    */
   private buildSummary(changes: SemanticChange[]): SemanticDiff['summary'] {
-    const byType = this.groupByType(changes);
-
-    const typeCounts: Record<string, number> = {};
-    for (const [type, typeChanges] of byType) {
-      typeCounts[type] = typeChanges.length;
-    }
-
     return {
       totalChanges: changes.length,
       added: changes.filter((c) => c.changeType === 'added').length,
       removed: changes.filter((c) => c.changeType === 'removed').length,
       modified: changes.filter((c) => c.changeType === 'modified').length,
-      byType: typeCounts,
     };
+  }
+
+  /**
+   * Build stats from changes
+   */
+  private buildStats(changes: SemanticChange[]): DiffStats {
+    const added = changes.filter((c) => c.changeType === 'added').length;
+    const removed = changes.filter((c) => c.changeType === 'removed').length;
+    const modified = changes.filter((c) => c.changeType === 'modified').length;
+
+    return {
+      additions: added,
+      deletions: removed,
+      modifications: modified,
+      moves: 0,
+      renames: 0,
+      totalChanges: changes.length,
+      entropyScore: 0,
+      entropyLevel: 'low',
+    };
+  }
+
+  /**
+   * Group changes into semantic change groups
+   */
+  private groupChanges(changes: SemanticChange[]): SemanticChangeGroup[] {
+    const groups: SemanticChangeGroup[] = [];
+    const byType = this.groupByType(changes);
+    const entropyAnalyzer = new EntropyAnalyzer();
+
+    for (const [type, typeChanges] of byType) {
+      groups.push({
+        id: `group-${type}`,
+        name: type,
+        type,
+        changes: typeChanges,
+        combinedEntropy: entropyAnalyzer.analyze([]),
+        level: 'low',
+      });
+    }
+
+    return groups;
   }
 
   /**

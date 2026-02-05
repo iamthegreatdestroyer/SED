@@ -19,6 +19,7 @@ export const LANGUAGE_EXTENSIONS: Record<SupportedLanguage, readonly string[]> =
   java: ['.java'],
   c: ['.c', '.h'],
   cpp: ['.cpp', '.cc', '.cxx', '.hpp', '.hxx', '.h'],
+  csharp: ['.cs'],
 } as const;
 
 /**
