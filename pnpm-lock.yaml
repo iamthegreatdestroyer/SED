@@ -300,8 +300,8 @@ importers:
         specifier: ^0.21.0
         version: 0.21.0(tree-sitter@0.21.1)
       tree-sitter-go:
-        specifier: ^0.21.0
-        version: 0.21.2(tree-sitter@0.21.1)
+        specifier: ^0.25.0
+        version: 0.25.0(tree-sitter@0.21.1)
       tree-sitter-java:
         specifier: ^0.21.0
         version: 0.21.0(tree-sitter@0.21.1)
@@ -8409,14 +8409,13 @@ packages:
       tree-sitter: 0.21.1
     dev: false
 
-  /tree-sitter-go@0.21.2(tree-sitter@0.21.1):
-    resolution: {integrity: sha512-aMFwjsB948nWhURiIxExK8QX29JYKs96P/IfXVvluVMRJZpL04SREHsdOZHYqJr1whkb7zr3/gWHqqvlkczmvw==}
+  /tree-sitter-go@0.25.0(tree-sitter@0.21.1):
+    resolution: {integrity: sha512-APBc/Dq3xz/e35Xpkhb1blu5UgW+2E3RyGWawZSCNcbGwa7jhSQPS8KsUupuzBla8PCo8+lz9W/JDJjmfRa2tw==}
     requiresBuild: true
     peerDependencies:
-      tree-sitter: ^0.21.0
-      tree_sitter: '*'
+      tree-sitter: ^0.25.0
     peerDependenciesMeta:
-      tree_sitter:
+      tree-sitter:
         optional: true
     dependencies:
       node-addon-api: 8.5.0
