@@ -27,12 +27,12 @@
     "@sed/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
+    "@types/node": "^20.19.33",
     "@vercel/ncc": "^0.38.1",
     "@vitest/coverage-v8": "^1.2.0",
     "rimraf": "^5.0.5",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.3",
+    "typescript": "^5.9.3",
     "vitest": "^1.2.0"
   },
   "engines": {

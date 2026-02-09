@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "@sed/config": "workspace:*",
-    "@types/node": "^20.11.0",
+    "@types/node": "^20.19.33",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
     "@testing-library/react": "^14.1.2",
@@ -46,7 +46,7 @@
     "jsdom": "^23.2.0",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
-    "typescript": "~5.3.0",
+    "typescript": "~5.9.3",
     "vitest": "^1.2.0"
   },
   "engines": {
